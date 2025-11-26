@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>成本與報價分析工具 v2.2.16 (圖文優化)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Chart.js for graphical display -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: "Noto Sans TC", sans-serif; background-color: #f7f8fc; }
+        .nav-button { transition: all 0.3s ease; text-align: left; width: 100%; }
+        .nav-button.active { border-color: #2563eb; background-color: #2563eb; color: white; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
+        .nav-button:not(.active):hover { background-color: #eef2ff; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .card { background-color: white; border-radius: 0.75rem; box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05); border: 1px solid #e5e7eb; padding: 1.25rem; margin-bottom: 1.25rem; }
+        .input-group label { display: block; margin-bottom: 0.25rem; font-size: 0.875rem; color: #4b5563; font-weight: 500; }
+        .input-group input, .input-group select { width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.5rem; }
+        .result-box { background-color: #f3f4f6; padding: 1rem; border-radius: 0.5rem; margin-top: 1.25rem; }
+        .result-box .label { font-weight: 500; color: #1f2937; }
+        .result-box .value { font-weight: 700; font-size: 1.125rem; color: #1d4ed8; }
+        .btn { padding: 0.625rem 1.25rem; border-radius: 0.5rem; font-weight: 500; cursor: pointer; transition: background-color 0.3s; display: inline-flex; align-items: center; justify-content: center; }
+        .btn-sm { padding: 0.375rem 0.75rem; font-size: 0.875rem; }
+        .btn-primary { background-color: #2563eb; color: white; }
+        .btn-primary:hover { background-color: #1d4ed8; }
+        .btn-secondary { background-color: #e5e7eb; color: #374151; }
+        .btn-secondary:hover { background-color: #d1d5db; }
+        .details-container { margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid #e5e7eb; }
+        .details-content { margin-top: 0.75rem; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; background-color: #ffffff;}
+        .calculator-keys { display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: center; }
+        .calculator-keys kbd { font-family: monospace; background-color: #4b5563; color: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.875rem; box-shadow: 0 2px 0 #1f2937; }
+        .star-rating { color: #f59e0b; }
+        input[type=range] { -webkit-appearance: none; width: 100%; margin: 6.5px 0; background-color: transparent; }
+        input[type=range]:focus { outline: none; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #d1d5db; border-radius: 2px; }
+        input[type=range]::-webkit-slider-thumb { box-shadow: 0px 0px 1px #000000; border: 2px solid #2563eb; height: 18px; width: 18px; border-radius: 50%; background: #ffffff; cursor: pointer; -webkit-appearance: none; margin-top: -7px; transition: transform .2s; }
+        input[type=range]:hover::-webkit-slider-thumb { transform: scale(1.2); }
+        #notification-toast { position: fixed; bottom: 1.5rem; right: 1.5rem; padding: 1rem 1.5rem; border-radius: 0.5rem; color: white; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); transform: translateX(calc(100% + 1.5rem)); transition: transform 0.5s ease-in-out; z-index: 1000; }
+        #notification-toast.show { transform: translateX(0); }
+        #notification-toast.success { background-color: #10b981; }
+        #notification-toast.error { background-color: #ef4444; }
+        #notification-toast.info { background-color: #3b82f6; }
+        .score-bar-container { background-color: #e5e7eb; border-radius: 9999px; height: 8px; overflow: hidden; margin-top: 4px;}
+        .score-bar { background-color: #2563eb; height: 100%; border-radius: 9999px; transition: width 0.5s ease-in-out; }
+        .score-bar.red { background-color: #dc2626; }
+        .score-bar.yellow { background-color: #facc15; }
+        .score-bar.green { background-color: #10b981; }
+        #confirmation-modal { position: fixed; inset: 0; background-color: rgba(0,0,0,0.5); z-index: 2000; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s; }
+        #confirmation-modal.show { opacity: 1; visibility: visible; }
+        #confirmation-modal .modal-content { background: white; padding: 1.5rem; border-radius: 0.75rem; max-width: 400px; width: 90%; transform: scale(0.95); transition: transform 0.3s; }
+        #confirmation-modal.show .modal-content { transform: scale(1); }
+        .is-exporting { box-shadow: none !important; border: none !important; }
+        /* Loading Spinner */
+        .spinner { border: 4px solid rgba(255, 255, 255, 0.3); border-top-color: #fff; border-radius: 50%; width: 1.25rem; height: 1.25rem; animation: spin 1s ease-in-out infinite; margin-right: 0.5rem; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Incoterms Flow Chart Styling */
+        .incoterms-flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; font-size: 0.75rem; margin-top: 1rem; position: relative; text-align: center; }
+        .flow-step { position: relative; padding: 0.25rem; }
+        .flow-line { height: 4px; background: #e5e7eb; position: absolute; top: 50%; transform: translateY(-50%); width: 100%; z-index: 1; }
+        .responsibility-line { position: absolute; height: 40px; width: 2px; z-index: 10; top: 100%; }
+        .risk-point { background-color: #ef4444; height: 14px; width: 14px; border-radius: 50%; position: absolute; top: 100%; left: 50%; transform: translate(-50%, 10px); border: 2px solid white; box-shadow: 0 0 0 2px #ef4444; }
+        .cost-point { background-color: #10b981; height: 14px; width: 14px; border-radius: 50%; position: absolute; top: 100%; left: 50%; transform: translate(-50%, 40px); border: 2px solid white; box-shadow: 0 0 0 2px #10b981; }
+        .label-box { position: absolute; font-weight: 700; background-color: white; padding: 0.1rem 0.3rem; border-radius: 0.25rem; white-space: nowrap; font-size: 0.7rem; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .label-risk { top: 100%; margin-top: 5px; transform: translateX(-50%); color: #ef4444; }
+        .label-cost { top: 100%; margin-top: 35px; transform: translateX(-50%); color: #10b981; }
+        
+        /* Chart container adjustment to prevent overlap */
+        .chart-with-data-container { display: flex; flex-direction: column; gap: 1rem; align-items: flex-start; }
+        @media (min-width: 640px) {
+            .chart-with-data-container { flex-direction: row; }
+        }
+        .chart-wrapper { width: 100%; max-width: 300px; }
+        .data-list { width: 100%; max-width: 300px; font-size: 0.875rem; }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 sm:p-6">
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-6 relative">
+            <div class="text-center">
+                <h1 class="text-3xl md:text-4xl font-bold text-gray-800">成本與報價分析工具 v2.2.16</h1>
+                <p class="text-gray-600 mt-1">整合式計算分析平台 (圖文優化)</p>
+            </div>
+            <div class="absolute top-0 right-0 flex items-start gap-2">
+                <div class="flex gap-2">
+                    <button class="btn btn-sm bg-green-600 text-white hover:bg-green-700" onclick="exportActiveTabToExcel()" title="匯出 Excel">
+                        <svg class="w-4 h-4 sm:mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zM5 11a1 1 0 112 0v2a1 1 0 11-2 0v-2zm3 0a1 1 0 112 0v2a1 1 0 11-2 0v-2zm3 0a1 1 0 112 0v2a1 1 0 11-2 0v-2z" clip-rule="evenodd" fill-rule="evenodd"></path></svg>
+                        <span class="hidden sm:inline">匯出 Excel</span>
+                    </button>
+                    <button class="btn btn-sm bg-red-600 text-white hover:bg-red-700" onclick="exportActiveTabToPDF()" title="匯出 PDF">
+                         <svg class="w-4 h-4 sm:mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 2a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7.414A2 2 0 0016.414 6L12 1.586A2 2 0 0010.586 1H5a2 2 0 00-2 1v1zM10 2v4h4L10 2zM7 11a1 1 0 112 0v2.414l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 111.414-1.414L9 13.414V11z" clip-rule="evenodd" /></svg>
+                        <span class="hidden sm:inline">匯出 PDF</span>
+                    </button>
+                    <button class="btn btn-sm bg-orange-600 text-white hover:bg-orange-700" onclick="confirmClearAllData()" title="清除全部資料">
+                        <svg class="w-4 h-4 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        <span class="hidden sm:inline">清除全部資料</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+        
+        <div class="card mb-4">
+            <h3 class="font-bold text-gray-700 mb-2 flex items-center">
+                <svg class="w-5 h-5 mr-2 text-purple-600" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                AI 功能設定
+            </h3>
+            <div class="input-group">
+                <label for="api_key_input">Google Gemini API 金鑰</label>
+                <div class="flex gap-2">
+                    <input type="password" id="api_key_input" placeholder="請在此貼上您的 API 金鑰以啟用 AI 分析功能" class="persist flex-grow">
+                    <button class="btn btn-secondary btn-sm" onclick="checkApiKey()">儲存金鑰</button>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">您的金鑰將僅儲存在您的瀏覽器中，不會上傳至任何伺服器。</p>
+            </div>
+        </div>
+
+        <div class="md:flex md:gap-4">
+            <nav class="md:w-1/4 lg:w-1/5 mb-6 md:mb-0">
+                <div class="space-y-1">
+                    <button class="nav-button active px-4 py-2 rounded-md border" onclick="openTab(event, 'basicCost')">一、基本成本計算</button>
+                    <button class="nav-button px-4 py-2 rounded-md border" onclick="openTab(event, 'gapAnalysis')">二、價格差距分析</button>
+                    <button class="nav-button px-4 py-2 rounded-md border" onclick="openTab(event, 'costToQuote')">三、成本轉換報價</button>
+                    <button class="nav-button px-4 py-2 rounded-md border" onclick="openTab(event, 'reverseProfit')">四、反向利潤分析</button>
+                    <button class="nav-button px-4 py-2 rounded-md border" onclick="openTab(event, 'sensitivityAnalysis')">五、敏感度分析</button>
+                    <button class="nav-button px-4 py-2 rounded-md border" onclick="openTab(event, 'bomCost')">六、BOM 成本拆解</button>
+                    <button class="nav-button px-4 py-2 rounded-md border" onclick="openTab(event, 'cbmWeight')">七、CBM 與重量計算</button>
+                    <button class="nav-button px-4 py-2 rounded-md border" onclick="openTab(event, 'containerSim')">八、裝櫃模擬</button>
+                    <button class="nav-button px-4 py-2 rounded-md border" onclick="openTab(event, 'supplierComp')">九、供應商比較</button>
+                    <button class="nav-button px-4 py-2 rounded-md border" onclick="openTab(event, 'incoterms')">十、國際貿易條件</button>
+                    <button class="nav-button px-4 py-2 rounded-md border" onclick="openTab(event, 'screwConverter')">十一、螺絲尺寸轉換</button>
+                </div>
+            </nav>
+
+            <main class="md:w-3/4 lg:w-4/5">
+                <!-- 1. 基本成本計算 -->
+                <div id="basicCost" class="tab-content active"><div class="card" data-export-title="基本成本計算"><h2 class="text-xl font-bold text-gray-700 mb-4">一、基本成本計算</h2><div class="grid grid-cols-1 sm:grid-cols-2 gap-3"><div class="input-group"><label for="bc_model">產品型號</label><input type="text" id="bc_model" placeholder="例如：SC-12345" class="persist"></div><div class="input-group"><label for="bc_weight">單重 (g)</label><input type="number" id="bc_weight" placeholder="例如：5.5" class="persist"></div><div class="input-group"><label for="bc_platingPrice">電鍍單價 (元/kg)</label><input type="number" id="bc_platingPrice" placeholder="例如：30" class="persist"></div><div class="input-group"><label for="bc_baseCost">黑身費 (元)</label><input type="number" id="bc_baseCost" placeholder="例如：0.8" class="persist"></div><div class="input-group col-span-1 sm:col-span-2"><label for="bc_processingFee">加工費 (元)</label><input type="number" id="bc_processingFee" placeholder="例如：0.2" class="persist"></div></div><div class="flex gap-4 mt-5"><button class="btn btn-primary w-full" onclick="calculateBasicCost()">計算</button><button class="btn btn-secondary w-full" onclick="clearBasicCost()">清除</button></div><div class="result-box"><div class="flex justify-between items-center mb-2"><span class="label">單顆電鍍費：</span><span id="bc_platingFee_result" class="value">0.00 元</span></div><hr class="my-2"><div class="flex justify-between items-center mt-2"><span class="label">單顆總成本：</span><span id="bc_totalCost_result" class="value">0.00 元</span></div><div id="bc_chart_container" class="mt-4 chart-with-data-container"><div class="chart-wrapper"><canvas id="bc_cost_chart" style="max-height: 250px;"></canvas></div><div id="bc_data_list" class="data-list text-gray-700"></div></div></div><div class="details-container" id="bc_details_container" style="display: none;"><h3 class="text-md font-semibold text-gray-600 mb-2">計算詳情</h3><div class="details-content space-y-3 text-sm" id="bc_details"></div></div></div></div>
+                
+                <!-- 2. 價格差距分析 -->
+                <div id="gapAnalysis" class="tab-content"><div class="card" data-export-title="價格差距分析"><h2 class="text-xl font-bold text-gray-700 mb-4">二、價格差距分析</h2><div class="grid grid-cols-1 lg:grid-cols-2 gap-3"><div class="bg-gray-50 p-3 rounded-lg border"><h3 class="font-semibold text-md mb-3">兩產品成本差距</h3><div class="input-group mb-2"><label for="ga_costA">產品A成本</label><input type="number" id="ga_costA" placeholder="0.00" class="border transition-colors persist"></div><div class="input-group mb-2"><label for="ga_costB">產品B成本</label><input type="number" id="ga_costB" placeholder="0.00" class="border transition-colors persist"></div><div class="result-box text-sm !mt-2 !p-2"><p id="ga_costGap_result">差距：0.00 元</p></div><div class="flex gap-2 mt-3"><button class="btn btn-primary btn-sm w-full" onclick="calculateCostGap()">計算</button><button class="btn btn-secondary btn-sm w-full" onclick="clearCostGap()">清除</button></div><div class="details-container !mt-3 !pt-3" id="ga_costGap_details_container" style="display: none;"><div class="details-content space-y-2 text-sm !mt-2" id="ga_costGap_details"></div></div></div><div class="bg-gray-50 p-3 rounded-lg border"><h3 class="font-semibold text-md mb-3">新舊價格差距</h3><div class="input-group mb-2"><label for="ga_oldPrice">舊價格</label><input type="number" id="ga_oldPrice" placeholder="0.00" class="persist"></div><div class="input-group mb-2"><label for="ga_newPrice">新價格</label><input type="number" id="ga_newPrice" placeholder="0.00" class="persist"></div><div class="result-box text-sm !mt-2 !p-2"><p id="ga_priceChange_result">差距：0.00 %</p></div><div class="flex gap-2 mt-3"><button class="btn btn-primary btn-sm w-full" onclick="calculatePriceChange()">計算</button><button class="btn btn-secondary btn-sm w-full" onclick="clearPriceChange()">清除</button></div><div class="details-container !mt-3 !pt-3" id="ga_priceChange_details_container" style="display: none;"><div class="details-content space-y-2 text-sm !mt-2" id="ga_priceChange_details"></div></div></div><div class="bg-gray-50 p-3 rounded-lg border"><h3 class="font-semibold text-md mb-3">客戶砍價壓力</h3><div class="input-group mb-2"><label for="ga_originalQuote">原報價</label><input type="number" id="ga_originalQuote" placeholder="0.00" class="persist"></div><div class="input-group mb-2"><label for="ga_customerTarget">客戶期望價</label><input type="number" id="ga_customerTarget" placeholder="0.00" class="persist"></div><div class="result-box text-sm !mt-2 !p-2"><p id="ga_pressure_result" class="mb-2">壓力：0.00 %</p><div class="score-bar-container"><div id="ga_pressure_bar" class="score-bar red" style="width: 0%;"></div></div></div><div class="flex gap-2 mt-3"><button class="btn btn-primary btn-sm w-full" onclick="calculateBargainingPressure()">計算</button><button class="btn btn-secondary btn-sm w-full" onclick="clearBargainingPressure()">清除</button></div><div class="details-container !mt-3 !pt-3" id="ga_pressure_details_container" style="display: none;"><div class="details-content space-y-2 text-sm !mt-2" id="ga_pressure_details"></div></div></div><div class="bg-gray-50 p-3 rounded-lg border"><h3 class="font-semibold text-md mb-3">目標價格達成率</h3><div class="input-group mb-2"><label for="ga_targetPrice">目標價</label><input type="number" id="ga_targetPrice" placeholder="0.00" class="persist"></div><div class="input-group mb-2"><label for="ga_currentCost">當前成本</label><input type="number" id="ga_currentCost" placeholder="0.00" class="persist"></div><div class="result-box text-sm !mt-2 !p-2"><p id="ga_achievement_result" class="mb-2">目標利潤率：0.00 %</p><div class="score-bar-container"><div id="ga_achievement_bar" class="score-bar green" style="width: 0%;"></div></div></div><div class="flex gap-2 mt-3"><button class="btn btn-primary btn-sm w-full" onclick="calculateAchievementRate()">計算</button><button class="btn btn-secondary btn-sm w-full" onclick="clearAchievementRate()">清除</button></div><div class="details-container !mt-3 !pt-3" id="ga_achievement_details_container" style="display: none;"><div class="details-content space-y-2 text-sm !mt-2" id="ga_achievement_details"></div></div></div></div></div></div>
+
+                <!-- 3. 成本轉換報價 -->
+                <div id="costToQuote" class="tab-content">
+                    <div class="card" data-export-title="成本轉換報價">
+                        <h2 class="text-xl font-bold text-gray-700 mb-4">三、成本 → 報價 (正向計算)</h2>
+                        <div>
+                            <div class="input-group mb-3"><label for="ctq_cost">產品成本</label><input type="number" id="ctq_cost" placeholder="例如：45" class="persist"></div>
+                            <div class="input-group mb-3"><label for="ctq_multiplier">利潤倍數</label><input type="number" id="ctq_multiplier" placeholder="例如：1.2" value="1.2" class="persist"></div>
+                            <div id="ctq_exchange_rate_component"></div>
+                            <div class="flex gap-4 mt-5">
+                                <button class="btn btn-primary w-full" onclick="calculateCostToQuote()">計算</button>
+                                <button class="btn btn-secondary w-full" onclick="clearCostToQuote()">清除</button>
+                            </div>
+                        </div>
+                        <div class="result-box space-y-2">
+                             <div class="flex justify-between items-center">
+                                <span class="label">利潤後成本：</span>
+                                <span id="ctq_cost_with_multiplier_result" class="value text-lg">0.00</span>
+                            </div>
+                            <hr class="my-2">
+                            <div class="flex justify-between items-center">
+                                <span class="label">報價金額：</span>
+                                <span id="ctq_quote_result" class="value">0.00</span>
+                            </div>
+                        </div>
+                        <div class="details-container" id="ctq_details_container" style="display: none;"><h3 class="text-md font-semibold text-gray-600 mb-2">計算詳情</h3><div class="details-content space-y-3 text-sm" id="ctq_details"></div></div>
+                    </div>
+                    <div class="card mt-4" data-export-title="反向利潤回推">
+                        <h2 class="text-xl font-bold text-gray-700 mb-4">報價 → 利潤 (反向回推)</h2>
+                        <div>
+                            <div class="input-group mb-3"><label for="cqr_cost">產品成本</label><input type="number" id="cqr_cost" placeholder="例如：45" class="persist"></div>
+                            <div class="input-group mb-3"><label for="cqr_quote">最終報價</label><input type="number" id="cqr_quote" placeholder="例如：2.0" class="persist"></div>
+                            <div id="cqr_exchange_rate_component"></div>
+                            <div class="flex gap-4 mt-5"><button class="btn btn-primary w-full" onclick="calculateQuoteReverse()">計算</button><button class="btn btn-secondary w-full" onclick="clearQuoteReverse()">清除</button></div>
+                        </div>
+                        <div class="result-box space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="label">等值成本幣賣價：</span>
+                                <span id="cqr_equivPrice_result" class="value text-lg">0.00</span>
+                            </div>
+                            <hr class="my-2">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="label">反推利潤倍數：</span>
+                                <span id="cqr_multiplier_result" class="value">0.00</span>
+                            </div>
+                            <div class="flex justify-between items-center mt-2">
+                                <span class="label">反推毛利率：</span>
+                                <span id="cqr_margin_result" class="value">0.00 %</span>
+                            </div>
+                        </div>
+                        <div class="details-container" id="cqr_details_container" style="display: none;"><h3 class="text-md font-semibold text-gray-600 mb-2">計算詳情</h3><div class="details-content space-y-3 text-sm" id="cqr_details"></div></div>
+                    </div>
+                </div>
+
+                <!-- 4. 反向利潤分析 -->
+                <div id="reverseProfit" class="tab-content"><div class="card" data-export-title="反向利潤分析"><h2 class="text-xl font-bold text-gray-700 mb-4">四、反向利潤分析 (依最終賣價)</h2><div><div class="input-group mb-3"><label for="rp_cost">產品成本</label><input type="number" id="rp_cost" placeholder="例如：45" class="persist"></div><div class="input-group mb-3"><label for="rp_sellPrice">最終賣價</label><input type="number" id="rp_sellPrice" placeholder="例如：2.0" class="persist"></div><div id="rp_exchange_rate_component"></div>
+                            <div class="flex gap-4 mt-5"><button class="btn btn-primary w-full" onclick="calculateReverseProfit()">計算</button><button class="btn btn-secondary w-full" onclick="clearReverseProfit()">清除</button></div>
+                        </div>
+                        <div class="result-box space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="label">等值成本幣賣價：</span>
+                                <span id="rp_equivPrice_result" class="value text-lg">0.00</span>
+                            </div>
+                            <hr class="my-2">
+                            <div class="flex justify-between items-center mb-2"><span class="label">毛利率：</span><span id="rp_margin_result" class="value">0.00 %</span></div>
+                        </div>
+                        <div class="details-container" id="rp_details_container" style="display: none;"><h3 class="text-md font-semibold text-gray-600 mb-2">計算詳情</h3><div class="details-content space-y-3 text-sm" id="rp_details"></div></div>
+                    </div>
+                </div>
+
+                <!-- 5. 敏感度分析 -->
+                <div id="sensitivityAnalysis" class="tab-content"><div class="card" data-export-title="敏感度分析"><h2 class="text-xl font-bold text-gray-700 mb-4">五、敏感度分析：報價變動預測</h2><p class="text-sm text-gray-600 mb-4">此功能預測當「基礎成本」、「利潤倍數」或「基礎匯率」各自獨立變動時，最終報價將如何變化。</p><div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5 max-w-xl mx-auto"><div class="input-group"><label for="sa_baseCost">基礎成本</label><input type="number" id="sa_baseCost" placeholder="1.5" value="1.5" class="persist" oninput="generateSensitivityTable()"></div><div class="input-group"><label for="sa_baseMultiplier">基礎利潤倍數</label><input type="number" id="sa_baseMultiplier" placeholder="1.2" value="1.2" class="persist" oninput="generateSensitivityTable()"></div><div class="input-group"><label for="sa_baseRate">基礎匯率</label><input type="number" id="sa_baseRate" placeholder="31.5" value="31.5" class="persist" oninput="generateSensitivityTable()"></div><div class="input-group"><label for="sa_variation">變動幅度: <span id="sa_variation_label" class="font-bold text-blue-600">5.0%</span></label><input type="range" id="sa_variation" min="0.5" max="20" step="0.5" value="5" oninput="document.getElementById('sa_variation_label').textContent = parseFloat(this.value).toFixed(1) + '%'; generateSensitivityTable()" class="persist"></div></div><div class="flex gap-4 mb-5 justify-center"><button class="btn btn-secondary" onclick="clearSensitivityTable()">重設參數</button></div><div id="sa_result" class="overflow-x-auto"></div></div></div>
+                
+                <!-- 6. BOM 成本拆解 -->
+                <div id="bomCost" class="tab-content"><div class="card" data-export-title="BOM成本拆解"><h2 class="text-xl font-bold text-gray-700 mb-4">六、BOM 成本拆解</h2><div class="overflow-x-auto"><table class="w-full text-sm text-left text-gray-500"><thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th scope="col" class="px-3 py-2 w-2/5">料號</th><th scope="col" class="px-3 py-2 w-2/5">名稱</th><th scope="col" class="px-3 py-2">單價</th><th scope="col" class="px-3 py-2">數量</th><th scope="col" class="px-3 py-2">成本</th><th scope="col" class="px-3 py-2">操作</th></tr></thead><tbody id="bom_table_body"></tbody></table></div><div class="flex justify-between items-center mt-4">
+    <div class="flex gap-2">
+        <button class="btn btn-primary" onclick="addBomItem()">新增料件</button>
+        <button class="btn btn-secondary" onclick="clearBom()">全部刪除</button>
+        <button class="btn btn-primary bg-indigo-600 hover:bg-indigo-700" onclick="calculateBomTotal(true)">計算 BOM</button>
+        <button id="bom_ai_button" class="btn btn-primary bg-purple-600 hover:bg-purple-700" onclick="analyzeBomWithGemini()">✨ AI 成本優化分析</button>
+    </div>
+    <div class="text-right"><span class="text-gray-600 font-semibold">總成本：</span><span id="bom_totalCost" class="text-xl font-bold text-blue-600">0.00 元</span></div>
+</div>
+<div id="bom_chart_container" class="mt-4 hidden chart-with-data-container"><div class="chart-wrapper"><canvas id="bom_cost_chart" style="max-height: 350px;"></canvas></div><div id="bom_data_list" class="data-list text-gray-700"></div></div>
+<div class="details-container" id="bom_details_container" style="display: none;"><h3 class="text-md font-semibold text-gray-600 mb-2">計算詳情</h3><div class="details-content space-y-3 text-sm" id="bom_details"></div></div><div id="bom_ai_result" class="mt-4" style="display: none;"></div></div></div>
+
+                <!-- 7. CBM 與重量計算 -->
+                <div id="cbmWeight" class="tab-content"><div class="card" data-export-title="CBM與重量計算"><h2 class="text-xl font-bold text-gray-700 mb-4">七、CBM 與重量計算</h2><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><div><p class="font-semibold mb-3 text-gray-600">外箱尺寸</p><div class="grid grid-cols-3 gap-3"><div class="input-group"><label for="cbm_length">長(cm)</label><input type="number" id="cbm_length" placeholder="50" class="persist"></div><div class="input-group"><label for="cbm_width">寬(cm)</label><input type="number" id="cbm_width" placeholder="40" class="persist"></div><div class="input-group"><label for="cbm_height">高(cm)</label><input type="number" id="cbm_height" placeholder="30" class="persist"></div></div><div class="input-group mt-3"><label for="cbm_cartons">箱數</label><input type="number" id="cbm_cartons" placeholder="100" class="persist"></div><div class="input-group mt-3"><label for="cbm_weight">單箱重(kg)</label><input type="number" id="cbm_weight" placeholder="15.5" class="persist"></div><div class="flex gap-4 mt-6"><button class="btn btn-primary w-full" onclick="calculateCbmWeight()">計算</button><button class="btn btn-secondary w-full" onclick="clearCbmWeight()">清除</button></div></div><div><div class="result-box space-y-2"><div class="flex justify-between items-center"><span class="label">單箱 CBM：</span><span id="cbm_single_result" class="value text-lg">0.000 m³</span></div><div class="flex justify-between items-center"><span class="label">總 CBM：</span><span id="cbm_total_result" class="value">0.000 m³</span></div><div class="flex justify-between items-center"><span class="label">總材積：</span><span id="cbm_cuft_result" class="value">0.000 CUFT</span></div><div class="flex justify-between items-center"><span class="label">總重量：</span><span id="cbm_totalWeight_result" class="value">0.00 kg</span></div></div><div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800"><h4>CBM小教室</h4><p>CBM (立方公尺) 與 材積 (CUFT) 都是用來計算貨物體積的單位，主要用途為：<br>1. <strong>運費計算：：</strong>海運併櫃(LCL)和空運主要依據體積重（CBM轉換而來）收費。<br>2. <strong>空間規劃：：</strong>預估貨物是否能裝滿一個貨櫃，最大化利用貨櫃空間。</p></div></div></div><div class="details-container" id="cbm_details_container" style="display: none;"><h3 class="text-md font-semibold text-gray-600 mb-2">計算詳情</h3><div class="details-content space-y-3 text-sm" id="cbm_details"></div></div></div></div>
+
+                <!-- 8. 裝櫃模擬 -->
+                <div id="containerSim" class="tab-content"><div class="card" data-export-title="裝櫃模擬"><h2 class="text-xl font-bold text-gray-700 mb-4">八、裝櫃模擬</h2><div class="input-group max-w-sm"><label for="cs_totalCbm">輸入貨物總 CBM (可由CBM計算自動帶入)</label><input type="number" id="cs_totalCbm" placeholder="例如：25.5" class="persist"></div><div class="flex gap-4 my-5"><button class="btn btn-primary" onclick="calculateContainerSim()">開始模擬</button><button class="btn btn-secondary" onclick="clearContainerSim()">清除</button></div><div id="cs_results" class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3"></div></div></div>
+
+                <!-- 9. 供應商比較 -->
+                <div id="supplierComp" class="tab-content"><div class="card" data-export-title="供應商比較"><h2 class="text-xl font-bold text-gray-700 mb-4">九、供應商比較</h2><div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-3 bg-gray-100 rounded-lg"><div class="md:col-span-2"><label class="input-group label">權重設定 (總和應為 100)</label><div class="grid grid-cols-3 gap-x-4 gap-y-2 mt-1"><div><label for="sc_weight_price" class="text-xs">價格: <span id="sc_weight_price_label" class="font-bold">50</span></label><input type="range" id="sc_weight_price" min="0" max="100" value="50" oninput="updateWeightLabels('sc_weight_price')" class="persist"></div><div><label for="sc_weight_leadtime" class="text-xs">交期: <span id="sc_weight_leadtime_label" class="font-bold">30</span></label><input type="range" id="sc_weight_leadtime" min="0" max="100" value="30" oninput="updateWeightLabels('sc_weight_leadtime')" class="persist"></div><div><label for="sc_weight_moq" class="text-xs">MOQ: <span id="sc_weight_moq_label" class="font-bold">20</span></label><input type="range" id="sc_weight_moq" min="0" max="100" value="20" oninput="updateWeightLabels('sc_weight_moq')" class="persist"></div></div><p class="text-xs text-gray-500 mt-1" id="sc_weight_total">總權重: 100</p></div><div class="input-group"><label for="sc_base_currency">比較基準幣別</label><select id="sc_base_currency" onchange="updateSupplierRateInputs(); compareSuppliers();" class="persist"></select></div><div class="input-group"><label>匯率設定</label><button id="sc_fetch_rates_btn" class="btn btn-primary btn-sm w-full mb-2" onclick="fetchAllSupplierRates()"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h5M20 20v-5h-5M4 4l5 5M20 20l-5-5"></path></svg>讀取所有即時匯率</button><div id="sc_realtime_rates_display" class="p-2 bg-gray-200 rounded-md text-xs space-y-1 mb-2"><p class="text-gray-500">點擊上方按鈕載入即時匯率作為參考。</p></div><label class="!text-xs !font-normal !mb-1">手動輸入計算用匯率 (1 <span id="sc_base_currency_label_input">TWD</span> = ?)</label><div class="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-2" id="sc_rates_container"></div></div></div><div class="overflow-x-auto"><table class="w-full text-sm text-left text-gray-500"><thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th scope="col" class="px-2 py-2 w-1/3">供應商</th><th scope="col" class="px-2 py-2">單價</th><th scope="col" class="px-2 py-2">幣別</th><th scope="col" class="px-2 py-2">交期(天)</th><th scope="col" class="px-2 py-2">MOQ</th><th scope="col" class="px-2 py-2">操作</th></tr></thead><tbody id="sc_table_body"></tbody></table></div><div class="flex gap-4 mt-4"><button class="btn btn-primary" onclick="addSupplier()">新增供應商</button><button class="btn btn-primary" onclick="compareSuppliers()">開始比較</button></div><div id="sc_results_container" class="mt-4" style="display: none;"><h3 class="text-lg font-semibold text-gray-600 mb-2">比較結果</h3><div id="sc_results" class="p-4 bg-gray-50 rounded-lg border"></div><div id="sc_ai_report" class="mt-4" style="display: none;"></div></div></div></div>
+                
+                <!-- 10. 國際貿易條件 -->
+                <div id="incoterms" class="tab-content"><div class="card" data-export-title="國際貿易條件"><h2 class="text-xl font-bold text-gray-700 mb-4">十、國際貿易條件</h2><div id="incoterm_buttons" class="flex flex-wrap gap-2 mb-4"></div><div id="incoterm_details" class="p-4 bg-gray-50 rounded-lg border min-h-[200px]"><p class="text-gray-500">請點擊上方任一條款以查看詳細說明。</p></div></div></div>
+                
+                <!-- 11. 螺絲尺寸轉換 -->
+                <div id="screwConverter" class="tab-content"><div class="card" data-export-title="螺絲尺寸轉換與查詢"><h2 class="text-xl font-bold text-gray-700 mb-4">十一、螺絲尺寸轉換</h2><p class="text-sm text-gray-500 mb-4">在任意一格輸入數值，其他兩格將自動換算。英制支援小數與分數 (如: 1-1/8)。</p><div class="grid grid-cols-1 sm:grid-cols-3 gap-4"><div class="input-group"><label for="sc_input_mm">公制 (mm)</label><input type="text" id="sc_input_mm" oninput="convertScrews(`mm`)" placeholder="例如: 28.575" class="persist"></div><div class="input-group"><label for="sc_input_inch">英制 (inch)</label><input type="text" id="sc_input_inch" oninput="convertScrews(`inch`)" placeholder="例如: 1-1/8 或 1.125" class="persist"></div><div class="input-group"><label for="sc_input_num">美規/公制標準</label><input type="text" id="sc_input_num" oninput="convertScrews(`num`)" placeholder="例如: 1-1/8&quot;-7 UNC" class="persist"></div></div><div class="mt-6"><h3 class="text-lg font-semibold text-gray-600 mb-2">最近標準尺寸參考</h3><div id="sc_results_table" class="overflow-x-auto"><p class="text-gray-500 text-sm">輸入數值後，此處將顯示最接近的常用尺寸。</p></div></div></div></div>
+            </main>
+        </div>
+    </div>
+
+    <div id="confirmation-modal">
+        <div class="modal-content text-center">
+            <h3 id="modal-title" class="text-lg font-bold text-gray-800 mb-2">確認操作</h3>
+            <p id="modal-message" class="text-gray-600 mb-6">您確定要執行此操作嗎？</p>
+            <div class="flex justify-center gap-4">
+                <button id="modal-confirm-btn" class="btn btn-primary bg-red-600 hover:bg-red-700">確定</button>
+                <button id="modal-cancel-btn" class="btn btn-secondary">取消</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="notification-toast"></div>
+    <script>
+        const { jsPDF } = window.jspdf;
+
+        // --- 全域數據常數 (Global Data Constants) ---
+        const currencies = { USD: "美金", TWD: "新台幣", CNY: "人民幣", JPY: "日圓", EUR: "歐元", HKD: "港幣" };
+
+        const incotermsData = {
+            EXW: { title: "Ex Works (工廠交貨)", details: "賣方在其場所（工廠、倉庫）將貨物交給買方即完成交貨。賣方不需將貨物裝上任何運輸工具，也不需辦理出口清關。", seller: ["在自家廠房/倉庫備妥貨物", "不負責裝載", "不負責出口清關"], buyer: ["負責從賣方場所提貨後的所有運輸、風險、費用", "負責出口與進口清關"], risk_transfer: 'SELLER_FACTORY', cost_transfer: 'SELLER_FACTORY' },
+            FCA: { title: "Free Carrier (貨交運送人)", details: "賣方將已辦理出口清關的貨物，在指定地點交給買方指定的運送人。", seller: ["辦理出口清關", "在指定地點將貨物交給買方指定的運送人", "承擔交貨前的一切風險"], buyer: ["指定運送人並簽訂運輸契約", "支付運費", "承擔交貨後的一切風險"], risk_transfer: 'MAIN_CARRIAGE_START', cost_transfer: 'MAIN_CARRIAGE_START' },
+            CPT: { title: "Carriage Paid To (運費付訖)", details: "賣方支付將貨物運至指定目的地的運費，但貨物滅失或毀損的風險在貨物交給第一運送人時轉移給買方。", seller: ["簽訂運至目的地的運輸契約並支付運費", "將貨物交給第一運送人", "辦理出口清關"], buyer: ["承擔貨物交給第一運送人之後的風險", "辦理進口清關"], risk_transfer: 'MAIN_CARRIAGE_START', cost_transfer: 'DESTINATION_ARRIVAL' },
+            CIP: { title: "Carriage and Insurance Paid To (運保費付訖)", details: "同CPT，但賣方還必須為買方投保貨物運輸保險。", seller: ["簽訂運輸契約並支付運費", "投保貨物運輸保險並支付保費", "將貨物交給第一運送人", "辦理出口清關"], buyer: ["承擔貨物交給第一運送人之後的風險", "辦理進口清關"], risk_transfer: 'MAIN_CARRIAGE_START', cost_transfer: 'DESTINATION_ARRIVAL' },
+            DAP: { title: "Delivered at Place (目的地交貨)", details: "賣方在指定目的地，將準備卸載的貨物交由買方處置。賣方承擔將貨物運至指定地點的一切風險。", seller: ["負責將貨物運送至指定目的地", "承擔運送至目的地（卸貨前）的一切風險", "辦理出口清關"], buyer: ["在目的地負責卸貨", "辦理進口清關及支付關稅"], risk_transfer: 'DESTINATION_ARRIVAL', cost_transfer: 'DESTINATION_ARRIVAL' },
+            DPU: { title: "Delivered at Place Unloaded (卸貨地交貨)", details: "賣方在指定目的地將貨物卸載後交由買方處置。賣方承擔將貨物運至目的地並卸載的一切風險。", seller: ["負責將貨物運送至指定目的地並卸貨", "承擔運送及卸貨過程中的一切風險", "辦理出口清關"], buyer: ["辦理進口清關及支付關稅"], risk_transfer: 'DESTINATION_UNLOAD', cost_transfer: 'DESTINATION_UNLOAD' },
+            DDP: { title: "Delivered Duty Paid (完稅後交貨)", details: "賣方承擔將貨物運至目的地的一切風險和費用，包括辦理進口清關、支付任何關稅和稅捐。", seller: ["負責將貨物運至目的地的一切事宜", "辦理出口及進口清關", "支付所有運費、關稅和稅捐"], buyer: ["僅需在目的地收貨"], risk_transfer: 'DESTINATION_ARRIVAL', cost_transfer: 'DESTINATION_ARRIVAL' }, // Note: Risk and Cost points simplified for DDP, often means delivered at buyer's door, but location is the key.
+            FAS: { title: "Free Alongside Ship (船邊交貨)", details: "賣方將貨物交到指定裝運港的船邊。之後的風險和費用由買方承擔。", seller: ["將貨物運至指定裝運港的船邊", "辦理出口清關"], buyer: ["負責將貨物裝船", "支付從船邊開始的所有費用與風險"], risk_transfer: 'VESSEL_SIDE', cost_transfer: 'VESSEL_SIDE' },
+            FOB: { title: "Free on Board (船上交貨)", details: "賣方將貨物裝上買方指定的船隻。貨物一旦裝上船，風險即從賣方轉移給買方。", seller: ["在裝運港將貨物裝上指定船隻", "辦理出口清關"], buyer: ["指定船隻並支付運費", "承擔貨物上船後的一切風險與費用"], risk_transfer: 'VESSEL_ON_BOARD', cost_transfer: 'VESSEL_ON_BOARD' },
+            CFR: { title: "Cost and Freight (成本加運費)", details: "賣方必須支付將貨物運至指定目的港所需的成本和運費，但風險在貨物裝上船時轉移給買方。", seller: ["支付運至目的港的運費", "在裝運港將貨物裝上船", "辦理出口清關"], buyer: ["承擔貨物上船後的風險", "負責目的港的卸貨費用及進口清關"], risk_transfer: 'VESSEL_ON_BOARD', cost_transfer: 'DESTINATION_PORT' },
+            CIF: { title: "Cost, Insurance and Freight (成本、保險加運費)", details: "同CFR，但賣方還必須為買方投保最低限度的海運保險。", seller: ["支付運費與保險費", "在裝運港將貨物裝上船", "辦理出口清關"], buyer: ["承擔貨物上船後的風險", "負責目的港的卸貨及進口清關"], risk_transfer: 'VESSEL_ON_BOARD', cost_transfer: 'DESTINATION_PORT' }
+        };
+
+        const screwStandards = [{ num: "#0-80 UNF", mm: 1.524, inch: .06, tpi: 80, pitch_mm: .318 }, { num: "#1-64 UNC", mm: 1.854, inch: .073, tpi: 64, pitch_mm: .397 }, { num: "#1-72 UNF", mm: 1.854, inch: .073, tpi: 72, pitch_mm: .353 }, { num: "#2-56 UNC", mm: 2.184, inch: .086, tpi: 56, pitch_mm: .454 }, { num: "#2-64 UNF", mm: 2.184, inch: .086, tpi: 64, pitch_mm: .397 }, { num: "#3-48 UNC", mm: 2.515, inch: .099, tpi: 48, pitch_mm: .529 }, { num: "#3-56 UNF", mm: 2.515, inch: .099, tpi: 56, pitch_mm: .454 }, { num: "#4-40 UNC", mm: 2.845, inch: .112, tpi: 40, pitch_mm: .635 }, { num: "#4-48 UNF", mm: 2.845, inch: .112, tpi: 48, pitch_mm: .529 }, { num: "#5-40 UNC", mm: 3.175, inch: .125, tpi: 40, pitch_mm: .635 }, { num: "#5-44 UNF", mm: 3.175, inch: .125, tpi: 44, pitch_mm: .577 }, { num: "#6-32 UNC", mm: 3.505, inch: .138, tpi: 32, pitch_mm: .794 }, { num: "#6-40 UNF", mm: 3.505, inch: .138, tpi: 40, pitch_mm: .635 }, { num: "#8-32 UNC", mm: 4.166, inch: .164, tpi: 32, pitch_mm: .794 }, { num: "#8-36 UNF", mm: 4.166, inch: .164, tpi: 36, pitch_mm: .706 }, { num: "#10-24 UNC", mm: 4.826, inch: .19, tpi: 24, pitch_mm: 1.058 }, { num: "#10-32 UNF", mm: 4.826, inch: .19, tpi: 32, pitch_mm: .794 }, { num: "#12-24 UNC", mm: 5.486, inch: .216, tpi: 24, pitch_mm: 1.058 }, { num: "12-28 UNF", mm: 5.486, inch: .216, tpi: 28, pitch_mm: .907 }, { num: '1/4"-20 UNC', mm: 6.35, inch: .25, tpi: 20, pitch_mm: 1.27 }, { num: '1/4"-28 UNF', mm: 6.35, inch: .25, tpi: 28, pitch_mm: .907 }, { num: '5/16"-18 UNC', mm: 7.938, inch: .3125, tpi: 18, pitch_mm: 1.411 }, { num: '5/16"-24 UNF', mm: 7.938, inch: .3125, tpi: 24, pitch_mm: 1.058 }, { num: '3/8"-16 UNC', mm: 9.525, inch: .375, tpi: 16, pitch_mm: 1.588 }, { num: '3/8"-24 UNF', mm: 9.525, inch: .375, tpi: 24, pitch_mm: 1.058 }, { num: '7/16"-14 UNC', mm: 11.112, inch: .4375, tpi: 14, pitch_mm: 1.814 }, { num: '7/16"-20 UNF', mm: 11.112, inch: .4375, tpi: 20, pitch_mm: 1.27 }, { num: '1/2"-13 UNC', mm: 12.7, inch: .5, tpi: 13, pitch_mm: 1.954 }, { num: '1/2"-20 UNF', mm: 12.7, inch: .5, tpi: 20, pitch_mm: 1.27 }, { num: '9/16"-12 UNC', mm: 14.288, inch: .5625, tpi: 12, pitch_mm: 2.117 }, { num: '9/16"-18 UNF', mm: 14.288, inch: .5625, tpi: 18, pitch_mm: 1.411 }, { num: '5/8"-11 UNC', mm: 15.875, inch: .625, tpi: 11, pitch_mm: 2.309 }, { num: '5/8"-18 UNF', mm: 15.875, inch: .625, tpi: 18, pitch_mm: 1.411 }, { num: '3/4"-10 UNC', mm: 19.05, inch: .75, tpi: 10, pitch_mm: 2.54 }, { num: '3/4"-16 UNF', mm: 19.05, inch: .75, tpi: 16, pitch_mm: 1.588 }, { num: '7/8"-9 UNC', mm: 22.225, inch: .875, tpi: 9, pitch_mm: 2.822 }, { num: '7/8"-14 UNF', mm: 22.225, inch: .875, tpi: 14, pitch_mm: 1.814 }, { num: '1"-8 UNC', mm: 25.4, inch: 1, tpi: 8, pitch_mm: 3.175 }, { num: '1"-12 UNF', mm: 25.4, inch: 1, tpi: 12, pitch_mm: 2.117 }, { num: '1-1/8"-7 UNC', mm: 28.575, inch: 1.125, tpi: 7, pitch_mm: 3.629 }, { num: '1-1/4"-7 UNC', mm: 31.75, inch: 1.25, tpi: 7, pitch_mm: 3.629 }, { num: '1-1/2"-6 UNC', mm: 38.1, inch: 1.5, tpi: 6, pitch_mm: 4.233 }, { num: "M1.6x0.35", mm: 1.6, inch: .063, tpi: null, pitch_mm: .35 }, { num: "M2x0.4", mm: 2, inch: .0787, tpi: null, pitch_mm: .4 }, { num: "M2.5x0.45", mm: 2.5, inch: .0984, tpi: null, pitch_mm: .45 }, { num: "M3x0.5", mm: 3, inch: .1181, tpi: null, pitch_mm: .5 }, { num: "M3.5x0.6", mm: 3.5, inch: .1378, tpi: null, pitch_mm: .6 }, { num: "M4x0.7", mm: 4, inch: .1575, tpi: null, pitch_mm: .7 }, { num: "M5x0.8", mm: 5, inch: .1969, tpi: null, pitch_mm: .8 }, { num: "M6x1.0", mm: 6, inch: .2362, tpi: null, pitch_mm: 1 }, { num: "M8x1.25", mm: 8, inch: .315, tpi: null, pitch_mm: 1.25 }, { num: "M10x1.5", mm: 10, inch: .3937, tpi: null, pitch_mm: 1.5 }, { num: "M12x1.75", mm: 12, inch: .4724, tpi: null, pitch_mm: 1.75 }, { num: "M16x2.0", mm: 16, inch: .6299, tpi: null, pitch_mm: 2 }, { num: "M20x2.5", mm: 20, inch: .7874, tpi: null, pitch_mm: 2.5 }, { num: "M24x3.0", mm: 24, inch: .9449, tpi: null, pitch_mm: 3 }, { num: "M30x3.5", mm: 30, inch: 1.1811, tpi: null, pitch_mm: 3.5 }, { num: "M36x4.0", mm: 36, inch: 1.4173, tpi: null, pitch_mm: 4 }];
+
+        const clearFunctions = { basicCost: clearBasicCost, gapAnalysis: () => { clearCostGap(); clearPriceChange(); clearBargainingPressure(); clearAchievementRate() }, costToQuote: () => { clearCostToQuote(); clearQuoteReverse() }, reverseProfit: clearReverseProfit, sensitivityAnalysis: clearSensitivityTable, bomCost: clearBom, cbmWeight: clearCbmWeight, containerSim: clearContainerSim, screwConverter: () => { clearScrewInputs() } };
+
+
+        // --- Chart Instances (Global reference for Chart.js) ---
+        let bcCostChart = null;
+        let bomCostChart = null;
+
+        // --- Core UI, State Management & Helper Functions ---
+        const getNum = (id) => { const el = document.getElementById(id); return el ? (parseFloat(el.value) || 0) : 0; };
+        const getStr = (id) => { const el = document.getElementById(id); return el ? el.value : ''; };
+        const setHtml = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+        const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+        const show = (id) => { const el = document.getElementById(id); if (el) el.style.display = 'block'; };
+        const hide = (id) => { const el = document.getElementById(id); if (el) el.style.display = 'none'; };
+        const setDisabled = (id, disabled) => { const el = document.getElementById(id); if (el) el.disabled = disabled; };
+
+        function openTab(evt, tabName) {
+            document.querySelectorAll(".tab-content").forEach(tc => tc.classList.remove("active"));
+            document.querySelectorAll(".nav-button").forEach(nb => nb.classList.remove("active"));
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+            localStorage.setItem('costToolActiveTab', tabName);
+
+            // Trigger chart/calculation updates when switching tabs
+            if (tabName === 'basicCost') calculateBasicCost();
+            if (tabName === 'bomCost') calculateBomTotal();
+            if (tabName === 'incoterms') displayIncoterm('FOB'); // Display a default term
+            if (tabName === 'sensitivityAnalysis') {
+                const bc_totalCost = getNum("bc_totalCost_result") || getNum("ctq_cost");
+                const ctq_exchangeRate = getNum("ctq_exchangeRate");
+                if (bc_totalCost > 0) setVal('sa_baseCost', bc_totalCost.toFixed(4));
+                if (ctq_exchangeRate > 0) setVal('sa_baseRate', ctq_exchangeRate.toFixed(4));
+                generateSensitivityTable();
+            }
+            if (tabName === 'containerSim') calculateContainerSim();
+        }
+
+        function renderDetails(containerId, details) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            const detailsContentEl = document.getElementById(containerId);
+            const detailsWrapperEl = detailsContentEl ? detailsContentEl.closest('.details-container') : null;
+
+            if (detailsContentEl) {
+                detailsContentEl.innerHTML = `<h4>1. 計算公式</h4><p class="text-gray-600 bg-gray-100 p-2 rounded text-xs">${details.formula}</p><div class="mt-2"><h4>2. 電腦計算步驟</h4><ol class="list-decimal list-inside text-gray-600 space-y-1 text-xs">${details.steps}</ol></div><div class="mt-2"><h4>3. 計算機按法</h4><div class="calculator-keys">${details.keys}</div></div>`;
+            }
+            if (detailsWrapperEl) {
+                detailsWrapperEl.style.display = 'block';
+            }
+        }
+
+        let notificationTimeout;
+        function showNotification(message, type = 'info', duration = 3000) {
+            const toast = document.getElementById('notification-toast');
+            if(!toast) return;
+            toast.textContent = message;
+            toast.className = 'show';
+            toast.classList.add(type);
+            clearTimeout(notificationTimeout);
+            notificationTimeout = setTimeout(() => { toast.classList.remove('show'); }, duration);
+        }
+        
+        function saveState() {
+            const state = {};
+            document.querySelectorAll('.persist').forEach(el => { if (el.id) state[el.id] = el.value; });
+            state.bom_table_body = getDynamicTableState('#bom_table_body', ['.bom-part-no', '.bom-part-name', '.bom-price', '.bom-qty']);
+            state.sc_table_body = getDynamicTableState('#sc_table_body', ['.sc-name', '.sc-price', '.sc-currency', '.sc-leadtime', '.sc-moq']);
+            localStorage.setItem('costToolState', JSON.stringify(state));
+        }
+
+        function loadState() {
+            const state = JSON.parse(localStorage.getItem('costToolState'));
+            if (state) {
+                 document.querySelectorAll('.persist').forEach(el => {
+                    if (el.id && typeof state[el.id] !== 'undefined') setVal(el.id, state[el.id]);
+                });
+                if(state.bom_table_body) restoreDynamicTable('#bom_table_body', state.bom_table_body, addBomItem);
+                if(state.sc_table_body) restoreDynamicTable('#sc_table_body', state.sc_table_body, addSupplier);
+            }
+            const activeTab = localStorage.getItem('costToolActiveTab') || 'basicCost';
+            const button = document.querySelector(`.nav-button[onclick*="'${activeTab}'"]`);
+            if (button) button.click();
+        }
+
+        function getDynamicTableState(tbodySelector, inputSelectors) {
+             const rows = [];
+             document.querySelectorAll(`${tbodySelector} tr`).forEach(row => {
+                 const rowData = inputSelectors.map(selector => row.querySelector(selector)?.value || '');
+                 if(rowData.some(val => val.trim() !== '')) rows.push(rowData);
+             });
+             return rows;
+        }
+
+        function restoreDynamicTable(tbodySelector, data, addRowFunc) {
+            const tbody = document.querySelector(tbodySelector);
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            if (data && data.length > 0) {
+                data.forEach(rowData => {
+                    addRowFunc();
+                    const newRow = tbody.lastElementChild;
+                    const rowInputs = Array.from(newRow.querySelectorAll('input, select'));
+                    rowData.forEach((val, i) => { if (rowInputs[i]) rowInputs[i].value = val; });
+                });
+            } else { addRowFunc(); }
+        }
+
+        function confirmClearAllData() {
+            const modal = document.getElementById('confirmation-modal');
+            const confirmBtn = document.getElementById('modal-confirm-btn');
+            const cancelBtn = document.getElementById('modal-cancel-btn');
+            document.getElementById('modal-title').textContent = '確認清除全部資料';
+            document.getElementById('modal-message').innerHTML = '此操作將會清除所有頁籤的輸入內容與計算結果，並且<strong class="text-red-600">無法復原</strong>。您確定要繼續嗎？';
+            
+            modal.classList.add('show');
+
+            const confirmHandler = () => { executeClearAll(); closeModal(); };
+            const closeModal = () => {
+                modal.classList.remove('show');
+                confirmBtn.removeEventListener('click', confirmHandler);
+                cancelBtn.removeEventListener('click', closeModal);
+                modal.removeEventListener('click', overlayClickHandler);
+            };
+            const overlayClickHandler = (e) => { if(e.target === modal) closeModal(); };
+
+            confirmBtn.addEventListener('click', confirmHandler);
+            cancelBtn.addEventListener('click', closeModal);
+            modal.addEventListener('click', overlayClickHandler);
+        }
+
+        function executeClearAll() {
+            localStorage.removeItem('costToolState');
+            localStorage.removeItem('costToolActiveTab');
+            location.reload();
+        }
+        
+        function checkApiKey() {
+            const apiKey = getStr('api_key_input');
+            if (apiKey && apiKey.trim().length > 10) { 
+                showNotification('API 金鑰已儲存。', 'success');
+                saveState();
+            } else {
+                showNotification('API 金鑰格式似乎不正確，請重新輸入。', 'error');
+            }
+        }
+        
+        async function callGemini(prompt, resultElementId) {
+            const resultEl = document.getElementById(resultElementId);
+            const buttonId = resultElementId === 'bom_ai_result' ? 'bom_ai_button' : 'sc_ai_button';
+            setDisabled(buttonId, true);
+            const originalHtml = document.getElementById(buttonId)?.innerHTML;
+            if(document.getElementById(buttonId)) document.getElementById(buttonId).innerHTML = '<div class="spinner border-purple-700 !w-4 !h-4 !mr-2"></div> AI 分析中...';
+
+            if (!resultEl) return;
+            const apiKey = getStr('api_key_input').trim();
+            if (!apiKey) {
+                 resultEl.innerHTML = `<div class="p-4 bg-red-50 border-l-4 border-red-500 rounded-r-lg"><h4 class="font-bold text-red-800 mb-2">分析失敗</h4><p class="text-red-900 text-sm">請先在頁面頂端的 "AI 功能設定" 中輸入您的 Google Gemini API 金鑰。</p></div>`;
+                 resultEl.style.display = 'block';
+                 setDisabled(buttonId, false);
+                 if(originalHtml) document.getElementById(buttonId).innerHTML = originalHtml;
+                 return;
+            }
+            resultEl.innerHTML = `<div class="p-4 bg-gray-50 rounded-lg border text-center text-gray-600"><p>✨ AI 正在為您分析，請稍候...</p><div class="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-700 mx-auto mt-2"></div></div>`;
+            resultEl.style.display = 'block';
+
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+            try {
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
+                if (!response.ok) throw new Error(`API 呼叫失敗: ${response.status}`);
+                const result = await response.json();
+                const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (text) {
+                    let html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/^\* (.*?)$/gm, '<li>$1</li>').replace(/\n/g, '<br>');
+                    if (html.includes('<li>')) html = `<ul>${html.replace(/<br><li>/g, '<li>').replace(/<li>/g, '<li class="mb-1">')}</ul>`;
+                    resultEl.innerHTML = `<div class="p-4 bg-purple-50 border-l-4 border-purple-500 rounded-r-lg"><h4 class="font-bold text-purple-800 mb-2">✨ AI 分析建議</h4><div class="text-purple-900 text-sm">${html}</div></div>`;
+                } else { throw new Error(result.error?.message || "從 API 收到的回應格式無效。"); }
+            } catch (error) {
+                console.error("Gemini API call error:", error);
+                resultEl.innerHTML = `<div class="p-4 bg-red-50 border-l-4 border-red-500 rounded-r-lg"><h4 class="font-bold text-red-800 mb-2">分析失敗</h4><p class="text-red-900 text-sm">無法連接至 AI 服務。錯誤: ${error.message}</p></div>`;
+            }
+            setDisabled(buttonId, false);
+            if(originalHtml) document.getElementById(buttonId).innerHTML = originalHtml;
+        }
+        
+        async function fetchExchangeRate(prefix) {
+            const [fromCurrency, toCurrency] = [getStr(`${prefix}_from_currency`), getStr(`${prefix}_to_currency`)];
+            const [statusEl, refRateEl, timeEl, rateInputEl, fetchBtnEl] = [document.getElementById(`${prefix}_rate_status`), document.getElementById(`${prefix}_ref_rate`), document.getElementById(`${prefix}_rate_time`), document.getElementById(`${prefix}_exchangeRate`), document.querySelector(`#${prefix}_exchange_rate_component button.btn-primary`)];
+            
+            if (!statusEl || !refRateEl || !rateInputEl || !fetchBtnEl) return;
+            const originalBtnHtml = fetchBtnEl.innerHTML;
+            
+            setDisabled(fetchBtnEl.id, true);
+            fetchBtnEl.innerHTML = '<div class="spinner !w-4 !h-4 !mr-2"></div> 讀取中...';
+
+            if (fromCurrency === toCurrency) {
+                setVal(rateInputEl.id, '1'); refRateEl.textContent = '1.00000'; statusEl.textContent = '相同幣別'; if(timeEl) timeEl.textContent = '';
+                checkRateDifference(prefix); 
+                setDisabled(fetchBtnEl.id, false);
+                fetchBtnEl.innerHTML = originalBtnHtml;
+                return;
+            }
+            statusEl.textContent = '讀取中...'; refRateEl.textContent = '...'; if(timeEl) timeEl.textContent = '';
+            
+            const apiUrl = `https://open.er-api.com/v6/latest/${fromCurrency}`;
+            try {
+                const response = await fetch(apiUrl);
+                if (!response.ok) throw new Error('網路回應錯誤');
+                const data = await response.json();
+                if (data.result === "success") {
+                    const directRate = data.rates[toCurrency]; 
+                    if(directRate) {
+                        const inverseRate = 1 / directRate; // Calculate 1 Target = ? From (e.g., 1 USD = 30.59 TWD)
+                        
+                        setVal(rateInputEl.id, inverseRate.toFixed(4)); // B. 匯率自動填入
+                        refRateEl.textContent = inverseRate.toFixed(4);
+                        
+                        const inverseLabel = document.querySelector(`#${prefix}_exchange_rate_component span:first-child`);
+                        if(inverseLabel) {
+                            inverseLabel.innerHTML = `參考匯率 (1 <span class="font-semibold">${toCurrency}</span> = ? <span class="font-semibold">${fromCurrency}</span>)`;
+                        }
+                        
+                        // Rerun calculation after updating manual rate
+                        if (prefix === 'ctq') calculateCostToQuote();
+                        if (prefix === 'cqr') calculateQuoteReverse();
+                        if (prefix === 'rp') calculateReverseProfit();
+
+                        statusEl.textContent = '讀取成功';
+                        if (timeEl && data.time_last_update_utc) timeEl.textContent = `(更新於: ${new Date(data.time_last_update_utc).toLocaleString()})`;
+                    } else { throw new Error(`查無幣別 ${toCurrency}`); }
+                } else { throw new Error(data['error-type'] || 'API 回應錯誤'); }
+            } catch (error) { console.error("Fetch Error:", error); refRateEl.textContent = 'N/A'; statusEl.textContent = '讀取失敗'; }
+            checkRateDifference(prefix);
+            setDisabled(fetchBtnEl.id, false);
+            fetchBtnEl.innerHTML = originalBtnHtml;
+        }
+        
+        function drawBasicCostChart(platingFee, baseCost, processingFee) {
+            const ctx = document.getElementById('bc_cost_chart');
+            const total = platingFee + baseCost + processingFee;
+
+            const data = {
+                labels: ['電鍍費', '黑身費', '加工費'],
+                datasets: [{
+                    data: [platingFee, baseCost, processingFee],
+                    backgroundColor: ['#2563EB', '#F59E0B', '#10B981'],
+                    hoverOffset: 4
+                }]
+            };
+
+            // Display data list with percentages
+            let listHtml = `<h4 class="font-bold mb-2">成本項目細節 (${total.toFixed(4)} 元)</h4><ul class="space-y-1">`;
+            data.datasets[0].data.forEach((val, index) => {
+                const percent = total > 0 ? (val / total * 100).toFixed(2) : 0;
+                listHtml += `<li class="flex justify-between items-center"><span class="font-medium">${data.labels[index]}</span><span class="text-sm font-mono text-gray-800">${val.toFixed(4)} 元 (${percent}%)</span></li>`;
+            });
+            listHtml += `</ul>`;
+            setHtml('bc_data_list', listHtml);
+
+            if (bcCostChart) {
+                bcCostChart.data = data;
+                bcCostChart.update();
+            } else {
+                bcCostChart = new Chart(ctx, {
+                    type: 'pie',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { position: 'top' },
+                            title: { display: true, text: '單顆成本結構分佈' },
+                            tooltip: { callbacks: { label: (context) => {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                const totalValue = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = totalValue > 0 ? (value / totalValue * 100).toFixed(2) : 0;
+                                return `${label}: ${value.toFixed(4)} 元 (${percentage}%)`;
+                            }} }
+                        },
+                        maintainAspectRatio: false
+                    }
+                });
+            }
+        }
+
+        function calculateBasicCost() {
+            const [weight, platingPrice, baseCost, processingFee] = [getNum("bc_weight"), getNum("bc_platingPrice"), getNum("bc_baseCost"), getNum("bc_processingFee")];
+            const platingFee = (weight / 1000) * platingPrice;
+            const totalCost = platingFee + baseCost + processingFee;
+            setHtml("bc_platingFee_result", `${platingFee.toFixed(4)} 元`);
+            setHtml("bc_totalCost_result", `${totalCost.toFixed(4)} 元`);
+            
+            renderDetails("bc_details", {
+                formula: "總成本 = ((單重 (g) / 1000) × 電鍍單價) + 黑身費 + 加工費",
+                steps: `<li><b>電鍍費：</b> (${weight}g ÷ 1000) × ${platingPrice}元/kg = ${platingFee.toFixed(4)}元</li><li><b>總成本：：</b> ${platingFee.toFixed(4)} + ${baseCost} + ${processingFee} = <strong>${totalCost.toFixed(4)}元</strong></li>`,
+                keys: `<kbd>${weight}</kbd><span>÷</span><kbd>1000</kbd><span>×</span><kbd>${platingPrice}</kbd><span>+</span><kbd>${baseCost}</kbd><span>+</span><kbd>${processingFee}</kbd><span>=</span>`
+            });
+
+            // 圖形化顯示：成本結構圓餅圖
+            document.getElementById('bc_chart_container').classList.remove('hidden');
+            drawBasicCostChart(platingFee, baseCost, processingFee);
+
+            if (totalCost > 0) {
+                setVal("ctq_cost", totalCost.toFixed(4)); setVal("cqr_cost", totalCost.toFixed(4)); setVal("rp_cost", totalCost.toFixed(4));
+                showNotification("結果已自動帶入後續分析工具", "info");
+            }
+        }
+        function clearBasicCost(){
+            ["bc_model","bc_weight","bc_platingPrice","bc_baseCost","bc_processingFee"].forEach(id=>setVal(id,""));
+            setHtml("bc_totalCost_result","0.00 元");
+            setHtml("bc_platingFee_result","0.00 元");
+            hide("bc_details_container");
+            document.getElementById('bc_chart_container').classList.add('hidden');
+            setHtml('bc_data_list', '');
+            if (bcCostChart) bcCostChart.destroy();
+            bcCostChart = null;
+        }
+        
+        function calculateCostGap(){const cA=getNum("ga_costA"),cB=getNum("ga_costB"),d=Math.abs(cA-cB);let resultText=`差距：${d.toFixed(2)} 元`;if(cA>cB&&cB>0){resultText+=' <span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-700">A較貴</span>'}else if(cB>cA&&cA>0){resultText+=' <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">B較貴</span>'}setHtml("ga_costGap_result",resultText);
+            
+            renderDetails("ga_costGap_details", {
+                formula: "成本差距 = | 產品A成本 - 產品B成本 |",
+                steps: `<li><b>計算差額：</b> | ${cA} - ${cB} | = <strong>${d.toFixed(2)}</strong></li>`,
+                keys: cA>=cB?`<kbd>${cA}</kbd><span>-</span><kbd>${cB}</kbd><span>=</span>`:`<kbd>${cB}</kbd><span>-</span><kbd>${cA}</kbd><span>=</span>`
+            });
+            show("ga_costGap_details_container");
+        }
+        function clearCostGap(){setVal("ga_costA","");setVal("ga_costB","");setHtml("ga_costGap_result","差距：0.00 元");hide("ga_costGap_details_container")}
+        
+        function calculatePriceChange(){
+            const o=getNum("ga_oldPrice"),n=getNum("ga_newPrice");
+            const c=o>0?((n-o)/o)*100:0;
+            
+            let color = c >= 0 ? "text-red-500" : "text-green-500";
+            let sign = c > 0 ? "+" : c < 0 ? "-" : "";
+            let displayValue = `${sign}${Math.abs(c).toFixed(2)} %`;
+            
+            setHtml("ga_priceChange_result",`差距：<span class="${color}">${displayValue}</span>`);
+            
+            renderDetails("ga_priceChange_details",{
+                formula:"價格差距(%) = ((新價格 - 舊價格) / 舊價格) × 100",
+                steps:`<li><b>計算價差：</b> ${n} - ${o} = ${(n-o).toFixed(4)}</li><li><b>計算比率：</b> ${(n-o).toFixed(4)} ÷ ${o} = ${(o>0?(n-o)/o:0).toFixed(4)}</li><li><b>轉為百分比：</b>... × 100 = <strong>${c.toFixed(2)}%</strong></li>`,
+                keys:`<kbd>${n}</kbd><span>-</span><kbd>${o}</kbd><span>=</span><span>÷</span><kbd>${o}</kbd><span>×</span><kbd>100</kbd><span>=</span>`
+            });
+            show("ga_priceChange_details_container");
+        }
+        function clearPriceChange(){setVal("ga_oldPrice","");setVal("ga_newPrice","");setHtml("ga_priceChange_result","差距：0.00 %");hide("ga_priceChange_details_container")}
+        
+        function calculateBargainingPressure(){
+            const [o, t] = [getNum("ga_originalQuote"), getNum("ga_customerTarget")];
+            const p = o > 0 ? ((o - t) / o) * 100 : 0;
+            const pressure = Math.max(0, Math.min(100, p)); // 限制在 0% 到 100% 之間
+            const barClass = pressure > 60 ? 'red' : pressure > 30 ? 'yellow' : 'green';
+
+            setHtml("ga_pressure_result", `壓力：<span class="text-red-500">${p.toFixed(2)} %</span>`);
+            document.getElementById('ga_pressure_bar').style.width = `${pressure.toFixed(1)}%`;
+            document.getElementById('ga_pressure_bar').className = `score-bar ${barClass}`;
+            
+            renderDetails("ga_pressure_details",{
+                formula:"砍價壓力(%) = ((原報價 - 客戶期望價) / 原報價) × 100",
+                steps:`<li><b>計算價差：</b> ${o} - ${t} = ${o-t}</li><li><b>計算比率：：</b> ${o-t} ÷ ${o} = ${(o>0?(o-t)/o:0).toFixed(4)}</li><li><b>轉為百分比：：</b>... × 100 = <strong>${p.toFixed(2)}%</strong></li>`,
+                keys:`<kbd>${o}</kbd><span>-</span><kbd>${t}</kbd><span>=</span><span>÷</span><kbd>${o}</kbd><span>×</span><kbd>100</kbd><span>=</span>`
+            });
+            show("ga_pressure_details_container");
+        }
+        function clearBargainingPressure(){setVal("ga_originalQuote","");setVal("ga_customerTarget","");setHtml("ga_pressure_result","壓力：0.00 %");document.getElementById('ga_pressure_bar').style.width = '0%'; hide("ga_pressure_details_container")}
+        
+        function calculateAchievementRate(){
+            const [t, c] = [getNum("ga_targetPrice"), getNum("ga_currentCost")];
+            const p = t > 0 ? ((t - c) / t) * 100 : 0;
+            const achievement = Math.max(0, Math.min(100, p)); // 限制在 0% 到 100% 之間
+            const barClass = achievement < 40 ? 'red' : achievement < 70 ? 'yellow' : 'green';
+
+            setHtml("ga_achievement_result", `目標利潤率：<span class="${p>=0?"text-green-500":"text-red-500"}">${p.toFixed(2)} %</span>`);
+            document.getElementById('ga_achievement_bar').style.width = `${achievement.toFixed(1)}%`;
+            document.getElementById('ga_achievement_bar').className = `score-bar ${barClass}`;
+            
+            renderDetails("ga_achievement_details",{
+                formula:"目標利潤率(%) = ((目標價 - 當前成本) / 目標價) × 100",
+                steps:`<li><b>計算利潤：</b> ${t} - ${c} = ${t-c}</li><li><b>計算比率：</b> ${t-c} ÷ ${t} = ${(t>0?(t-c)/t:0).toFixed(4)}</li><li><b>轉為百分比：</b>... × 100 = <strong>${p.toFixed(2)}%</strong></li>`,
+                keys:`<kbd>${t}</kbd><span>-</span><kbd>${c}</kbd><span>=</span><span>÷</span><kbd>${t}</kbd><span>×</span><kbd>100</kbd><span>=</span>`
+            });
+            show("ga_achievement_details_container");
+        }
+        function clearAchievementRate(){setVal("ga_targetPrice","");setVal("ga_currentCost","");setHtml("ga_achievement_result","目標利潤率：0.00 %");document.getElementById('ga_achievement_bar').style.width = '0%'; hide("ga_achievement_details_container")}
+        
+        function calculateCostToQuote(){
+            const [c, m, r] = [getNum("ctq_cost"), getNum("ctq_multiplier"), getNum("ctq_exchangeRate")];
+            const [fc, tc] = [getStr("ctq_from_currency"), getStr("ctq_to_currency")];
+            if (r <= 0) return showNotification("請輸入有效的匯率 (>0)", "error");
+
+            const costWithMultiplier = c * m;
+            const quote = costWithMultiplier / r;
+            
+            setHtml("ctq_cost_with_multiplier_result", `${costWithMultiplier.toFixed(4)} ${fc}`);
+            setHtml("ctq_quote_result", `${quote.toFixed(4)} ${tc}`);
+            
+            renderDetails("ctq_details", {
+                formula: "報價金額 = (產品成本 × 利潤倍數) ÷ 匯率 (1 報價幣 = ? 成本幣)",
+                steps: `<li><b>利潤後成本：</b> ${c} ${fc} × ${m} = ${costWithMultiplier.toFixed(4)} ${fc}</li><li><b>轉換幣別：</b> ${costWithMultiplier.toFixed(4)} ${fc} ÷ ${r} = <strong>${quote.toFixed(4)} ${tc}</strong></li>`,
+                keys: `<kbd>${c}</kbd><span>×</span><kbd>${m}</kbd><span>÷</span><kbd>${r}</kbd><span>=</span>`
+            });
+        }
+        function clearCostToQuote(){["ctq_cost","ctq_exchangeRate"].forEach(id=>setVal(id,""));setVal("ctq_multiplier","1.2");setHtml("ctq_cost_with_multiplier_result", "0.00");setHtml("ctq_quote_result","0.00");hide("ctq_details_container")}
+        
+        function calculateQuoteReverse(){
+            const [c, q, r] = [getNum("cqr_cost"), getNum("cqr_quote"), getNum("cqr_exchangeRate")];
+            if (r <= 0 || c <= 0 || q <= 0) return showNotification("請輸入有效的正數", "error");
+            const [cc, qc] = [getStr("cqr_from_currency"), getStr("cqr_to_currency")];
+            
+            const equivPrice = q * r; 
+            const multiplier = equivPrice / c;
+            const margin = equivPrice > 0 ? ((equivPrice - c) / equivPrice) * 100 : 0;
+            
+            setHtml("cqr_equivPrice_result", `${equivPrice.toFixed(4)} ${cc}`);
+            setHtml("cqr_multiplier_result", `${multiplier.toFixed(4)}`);
+            setHtml("cqr_margin_result", `${margin.toFixed(2)} %`);
+            
+            renderDetails("cqr_details", {
+                formula: "倍數 = (報價 × 匯率 (1 報價幣 = ? 成本幣)) ÷ 成本",
+                steps: `<li><b>等值成本：</b> ${q} ${qc} × ${r} = ${equivPrice.toFixed(4)} ${cc}</li><li><b>計算倍數：</b> ${equivPrice.toFixed(4)} ${cc} ÷ ${c} ${cc} = <strong>${multiplier.toFixed(4)}</strong></li><li><b>計算毛利率：</b> (${equivPrice.toFixed(4)} - ${c}) ÷ ${equivPrice.toFixed(4)} × 100 = <strong>${margin.toFixed(2)}%</strong></li>`,
+                keys: `<kbd>${q}</kbd><span>×</span><kbd>${r}</kbd><span>÷</span><kbd>${c}</kbd><span>=</span>`
+            });
+        }
+        function clearQuoteReverse(){["cqr_cost","cqr_quote","cqr_exchangeRate"].forEach(id=>setVal(id,""));setHtml("cqr_equivPrice_result", "0.00");setHtml("cqr_multiplier_result","0.00");setHtml("cqr_margin_result","0.00 %");hide("cqr_details_container")}
+
+        function calculateReverseProfit(){
+            const [c, s, r] = [getNum("rp_cost"), getNum("rp_sellPrice"), getNum("rp_exchangeRate")];
+            if (r <= 0 || s <= 0) return showNotification("請輸入有效的正數", "error");
+            const [cc, sc] = [getStr("rp_from_currency"), getStr("rp_to_currency")];
+            
+            const equivPrice = s * r; 
+            const mg = equivPrice > 0 ? ((equivPrice - c) / equivPrice) * 100 : 0;
+            
+            setHtml("rp_equivPrice_result", `${equivPrice.toFixed(4)} ${cc}`);
+            setHtml("rp_margin_result", `${mg.toFixed(2)} %`);
+            
+            renderDetails("rp_details", {
+                formula: "毛利率(%) = ((賣價 × 匯率 (1 賣價幣 = ? 成本幣)) - 成本) / (等值成本) × 100",
+                steps: `<li><b>等值賣價：：</b> ${s} ${sc} × ${r} = ${equivPrice.toFixed(4)} ${cc}</li><li><b>計算毛利：</b> ${equivPrice.toFixed(4)} - ${c} = ${(equivPrice-c).toFixed(4)} ${cc}</li><li><b>計算毛利率：：</b> ... ÷ ${equivPrice.toFixed(4)} × 100 = <strong>${mg.toFixed(2)}%</strong></li>`,
+                keys: `<kbd>${s}</kbd><span>×</span><kbd>${r}</kbd><span>-</span><kbd>${c}</kbd><span>=</span><span>÷</span><kbd>${equivPrice.toFixed(4)}</kbd><span>×</span><kbd>100</kbd><span>=</span>`
+            });
+        }
+        function clearReverseProfit(){["rp_cost","rp_sellPrice","rp_exchangeRate"].forEach(id=>setVal(id,""));setHtml("rp_margin_result","0.00 %");setHtml("rp_equivPrice_result","0.00");hide("rp_details_container")}
+        
+        function checkRateDifference(prefix){const m=getNum(`${prefix}_exchangeRate`),t=document.getElementById(`${prefix}_ref_rate`).textContent,e=document.getElementById(`${prefix}_rate_warning`);if(m===0||isNaN(parseFloat(t))){e.textContent="";return}const f=parseFloat(t),d=Math.abs(m-f)/f;e.textContent=d>.2?`警告：與參考匯率價差超過 ${(d*100).toFixed(0)}%;`:""}
+        function swapCurrencies(prefix){const[f,t]=[document.getElementById(`${prefix}_from_currency`),document.getElementById(`${prefix}_to_currency`)];[f.value,t.value]=[t.value,f.value];fetchExchangeRate(prefix); updateCurrencyDisplays(prefix);}
+        
+        function generateSensitivityTable(){const[c,m,r,v]=[getNum("sa_baseCost"),getNum("sa_baseMultiplier"),getNum("sa_baseRate"),getNum("sa_variation")/100];if(c<=0||m<=0||r<=0)return setHtml("sa_result",'<p class="text-red-500 text-center mt-4">請輸入所有有效的正數參數。</p>');const vs=[-2*v,-v,0,v,2*v];
+        
+        const bq=(c*m)/r; 
+        const h=vs.map(v=>`<th class="px-4 py-2 text-center ${v===0?"bg-blue-200 text-blue-900 font-bold":""}">${(v*100).toFixed(1)}%</th>`);let t=`<table class="w-full text-sm text-left text-gray-500 border"><thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th class="px-4 py-2">基準報價: <span class="font-bold text-green-600">${bq.toFixed(4)}</span></th>${h.join("")}</tr></thead><tbody>`;
+        
+        const rows=[
+            {l:"成本變動 (影響最大)",c:v=>(c*(1+v)*m/r)}, 
+            {l:"倍數變動",c:v=>(c*(m*(1+v))/r)},
+            {l:"匯率變動 (逆向影響)",c:v=>(c*m/(r*(1+v)))}
+        ];
+        
+        rows.forEach(row=>{t+=`<tr class="bg-white border-b"><td class="px-4 py-2 font-medium text-gray-800">${row.l}</td>${vs.map(v=>{const res=row.c(v);let cl=v===0?"font-bold bg-blue-50 text-blue-700":v>0?"text-red-600":"text-green-600";return`<td class="px-4 py-2 text-center ${cl}">${res.toFixed(4)}</td>`}).join("")}</tr>`});setHtml("sa_result",t+"</tbody></table>");
+        }
+        function clearSensitivityTable(){setVal("sa_baseCost","1.5");setVal("sa_baseMultiplier","1.2");setVal("sa_baseRate","31.5");if(document.getElementById("sa_variation_label"))document.getElementById("sa_variation_label").textContent="5.0%";setHtml("sa_result","")}
+        
+        function drawBomCostChart(labels, data) {
+            const ctx = document.getElementById('bom_cost_chart');
+            document.getElementById('bom_chart_container').classList.remove('hidden');
+            const total = data.reduce((a, b) => a + b, 0);
+
+            const backgroundColors = [
+                '#1d4ed8', '#059669', '#f97316', '#ef4444', '#7c3aed', '#db2777', '#facc15', '#a3a3a3', '#06b6d4', '#475569'
+            ];
+
+            const chartData = {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: backgroundColors.slice(0, labels.length),
+                    hoverOffset: 4
+                }]
+            };
+
+            // Display data list with percentages
+            let listHtml = `<h4 class="font-bold mb-2">成本項目細節 (${total.toFixed(2)} 元)</h4><ul class="space-y-1">`;
+            data.forEach((val, index) => {
+                const percent = total > 0 ? (val / total * 100).toFixed(2) : 0;
+                listHtml += `<li class="flex justify-between items-center"><span class="font-medium">${labels[index]}</span><span class="text-sm font-mono text-gray-800">${val.toFixed(2)} 元 (${percent}%)</span></li>`;
+            });
+            listHtml += `</ul>`;
+            setHtml('bom_data_list', listHtml);
+
+            if (bomCostChart) {
+                bomCostChart.data = chartData;
+                bomCostChart.update();
+            } else {
+                bomCostChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: chartData,
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { position: 'top' },
+                            title: { display: true, text: 'BOM 成本分佈' },
+                            tooltip: { callbacks: { label: (context) => {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                const totalValue = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = totalValue > 0 ? (value / totalValue * 100).toFixed(2) : 0;
+                                return `${label}: ${value.toFixed(2)} 元 (${percentage}%)`;
+                            }} }
+                        },
+                        maintainAspectRatio: false
+                    }
+                });
+            }
+        }
+
+        function analyzeBomWithGemini(){const i=Array.from(document.querySelectorAll("#bom_table_body .bom-item")).map(r=>{const[n,p,c,q]=[r.querySelector(".bom-part-no").value,r.querySelector(".bom-part-name").value,parseFloat(r.querySelector(".bom-price").value)||0,parseFloat(r.querySelector(".bom-qty").value)||0];return(c>0&&q>0)?`- ${p||'N/A'} (料號:${n||"N/A"}):單價${c.toFixed(2)},數量${q},成本${(c*q).toFixed(2)}`:null}).filter(Boolean);if(i.length===0)return showNotification("請至少輸入一項有效的料件資訊。","error");const prompt=`身為採購分析專家，請根據以下BOM（總成本 ${document.getElementById("bom_totalCost").textContent}），提出具體成本優化建議（如替代材料、簡化設計、不同製程/供應商等），請條列式呈現。BOM清單:${i.join("\n")}`;callGemini(prompt,"bom_ai_result")}
+        function addBomItem(){document.getElementById("bom_table_body").insertAdjacentHTML("beforeend",`<tr class="bg-white border-b"><td class="p-2"><input type="text" class="w-full p-1 border rounded bom-part-no persist" placeholder="料號"></td><td class="p-2"><input type="text" class="w-full p-1 border rounded bom-part-name persist" placeholder="名稱"></td><td class="p-2"><input type="number" class="w-24 p-1 border rounded bom-price persist" oninput="calculateBomTotal()"></td><td class="p-2"><input type="number" class="w-20 p-1 border rounded bom-qty persist" oninput="calculateBomTotal()"></td><td class="p-2 bom-item-cost text-right">0.00</td><td class="p-2 text-center"><button class="text-red-500 text-xs" onclick="removeBomItem(this)">移除</button></td></tr>`)}
+        function removeBomItem(btn){btn.closest("tr").remove();calculateBomTotal()}
+        
+        function calculateBomTotal(manualTrigger = false){
+            let total=0,s="",k="";
+            const labels = [];
+            const data = [];
+
+            document.querySelectorAll("#bom_table_body tr").forEach((r,i)=>{
+                const name = r.querySelector(".bom-part-name")?.value || `料件 ${i + 1}`;
+                const p=parseFloat(r.querySelector(".bom-price")?.value)||0,
+                      q=parseFloat(r.querySelector(".bom-qty")?.value)||0,
+                      c=p*q;
+                r.querySelector(".bom-item-cost").textContent=c.toFixed(2);
+                
+                if (c > 0) {
+                    total += c;
+                    labels.push(name);
+                    data.push(c);
+                    s+=`<li><b>${name}:</b> ${p} × ${q} = ${c.toFixed(2)}</li>`;
+                    k+=`${k!==""?"<span>+</span>":""}<kbd>${p}</kbd><span>×</span><kbd>${q}</kbd>`;
+                }
+            });
+            
+            setHtml("bom_totalCost",`${total.toFixed(2)} 元`);
+            
+            if(total > 0 || manualTrigger) {
+                 renderDetails("bom_details",{
+                    formula:"總成本 = Σ (單價 × 數量)",
+                    steps:`${s}<li><b>總計：</b> 將所有項成本相加 = <strong>${total.toFixed(2)}</strong></li>`,
+                    keys:k+(k!==""?"<span>=</span>":"")
+                });
+                drawBomCostChart(labels, data);
+            } else {
+                hide("bom_details_container");
+                document.getElementById('bom_chart_container').classList.add('hidden');
+                setHtml('bom_data_list', '');
+            }
+        }
+
+        function clearBom(){
+            document.getElementById("bom_table_body").innerHTML="";
+            addBomItem();
+            calculateBomTotal();
+            if (bomCostChart) bomCostChart.destroy();
+            bomCostChart = null;
+        }
+        
+        function calculateCbmWeight(){
+            const[l,w,h,c,wg]=[getNum("cbm_length"),getNum("cbm_width"),getNum("cbm_height"),getNum("cbm_cartons"),getNum("cbm_weight")];
+            const sc=l*w*h/1e6,tc=sc*c,twg=wg*c,tcuft=tc*35.315;
+            setHtml("cbm_single_result",`${sc.toFixed(3)} m³`);
+            setHtml("cbm_total_result",`${tc.toFixed(3)} m³`);
+            setHtml("cbm_cuft_result",`${tcuft.toFixed(3)} CUFT`);
+            setHtml("cbm_totalWeight_result",`${twg.toFixed(2)} kg`);
+            
+            if(tc>0){
+                setVal("cs_totalCbm",tc.toFixed(3));
+                calculateContainerSim(); 
+                showNotification("總CBM已自動帶入裝櫃模擬並計算","info")
+            }
+
+            renderDetails("cbm_details",{
+                formula: "總CBM = (長(cm) × 寬(cm) × 高(cm) ÷ 1,000,000) × 箱數",
+                steps: `<li><b>單箱CBM:</b> (${l}×${w}×${h})÷1,000,000=${sc.toFixed(4)}m³</li><li><b>總CBM:</b> ${sc.toFixed(4)}m³×${c}=<strong>${tc.toFixed(3)}m³</strong></li><li><b>總材積:</b> ${tc.toFixed(3)}m³×35.315=<strong>${tcuft.toFixed(3)}CUFT</strong></li>`,
+                keys: `<kbd>${l}</kbd>×<kbd>${w}</kbd>×<kbd>${h}</kbd><span>÷</span><kbd>1000000</kbd><span>×</span><kbd>${c}</kbd><span>=</span>`
+            });
+        }
+        function clearCbmWeight(){["cbm_length","cbm_width","cbm_height","cbm_cartons","cbm_weight","cs_totalCbm"].forEach(id=>setVal(id,""));["cbm_single_result","cbm_total_result","cbm_cuft_result"].forEach(id=>setHtml(id,"0.000"));setHtml("cbm_totalWeight_result","0.00 kg");clearContainerSim();hide("cbm_details_container")}
+        
+        function calculateContainerSim(){
+            const tc=getNum("cs_totalCbm");
+            if(tc<=0)return setHtml("cs_results","");
+            const conts=[{n:"20GP",c:33.2},{n:"40GP",c:67.7},{n:"40HC",c:76.4}]; 
+            let h="";
+            conts.forEach(c=>{
+                const u=tc/c.c*100,r=c.c-tc,
+                cl=u>100?'red':u>=95?'green':u>=85?'yellow':'gray';
+                let rec,st;
+                if(u>100){rec="爆櫃風險高";st="☆☆☆☆☆"}
+                else if(u>=95){rec="極佳利用率";st="★★★★★"}
+                else if(u>=85){rec="良好利用率";st="★★★★☆"}
+                else{rec="尚有大量空間";st="★★★☆☆"}
+                h+=`<div class="result-box border-l-4 border-${cl}-500 !p-3"><h4 class="font-bold">${c.n} (Max: ${c.c} m³)</h4><p class="text-xs text-gray-500">理論最大容積</p><div class="mt-2 text-sm"><p><strong>利用率:</strong> <span class="font-mono text-${cl}-600">${u.toFixed(1)}%</span></p><div class="score-bar-container"><div class="score-bar ${cl}" style="width: ${Math.min(u, 100)}%;"></div></div><p class="mt-2"><strong>剩餘空間:</strong> <span class="font-mono ${r<0?"text-red-500":""}">${r.toFixed(2)}m³</span></p><p><strong>建議:</strong> <span class="font-bold text-${cl}-600">${rec}</span> <span class="star-rating">${st}</span></p></div></div>`
+            });
+            setHtml("cs_results",h)
+        }
+        function clearContainerSim(){setVal("cs_totalCbm","");setHtml("cs_results","")}
+        async function fetchAllSupplierRates(){
+            const bc=getStr("sc_base_currency"),d=document.getElementById("sc_realtime_rates_display"),btn=document.getElementById("sc_fetch_rates_btn");
+            const originalHtml = btn.innerHTML;
+            setDisabled('sc_fetch_rates_btn', true);
+            btn.innerHTML = '<div class="spinner !w-4 !h-4 !mr-2"></div> 讀取中...';
+            d.innerHTML='<p class="text-gray-500">讀取中...</p>';
+            try{
+                const res=await fetch(`https://open.er-api.com/v6/latest/${bc}`);
+                if(!res.ok)throw new Error("網路回應錯誤");
+                const data=await res.json();
+                if(data.result!=="success")throw new Error(data["error-type"]||"API錯誤");
+                let h="";const rc=document.getElementById("sc_rates_container");
+                
+                Object.keys(currencies).forEach(c=>{
+                    const r=data.rates[c];
+                    if(c!==bc){
+                        if(r){
+                            const inverseRate = (1 / r).toFixed(4); 
+                            h+=`<div><strong>${c}:</strong> ${(1/r).toFixed(4)} (${bc}/${c})</div>`;
+                            const i=rc.querySelector(`input[data-currency="${c}"]`);
+                            if(i) i.value=inverseRate; 
+                        } else h+=`<div><strong>${c}:</strong> N/A</div>`
+                    }
+                });
+                
+                const ut=data.time_last_update_utc?`(更新於:${new Date(data.time_last_update_utc).toLocaleString()})`:"";
+                d.innerHTML=`<p class="font-bold mb-1">即時參考匯率 (1 ${bc} = ?) ${ut}</p>`+h;
+                showNotification("已成功讀取並填入匯率","success");
+                compareSuppliers(); 
+            }catch(e){
+                console.error("Fetch Error:",e);
+                d.innerHTML=`<p class="text-red-500">讀取失敗: ${e.message}</p>`;
+                showNotification("匯率讀取失敗","error");
+            }
+            setDisabled('sc_fetch_rates_btn', false);
+            btn.innerHTML = originalHtml;
+        }
+        function addSupplier(){document.getElementById("sc_table_body").insertAdjacentHTML("beforeend",`<tr class="bg-white border-b"><td class="p-2"><input type="text" class="sc-name w-full p-1 border rounded persist" placeholder="供應商"></td><td class="p-2"><input type="number" class="sc-price w-full p-1 border rounded persist" oninput="compareSuppliers()"></td><td class="p-2"><select class="sc-currency w-full p-1 border rounded persist" onchange="compareSuppliers()"></select></td><td class="p-2"><input type="number" class="sc-leadtime w-full p-1 border rounded persist" placeholder="30" oninput="compareSuppliers()"></td><td class="p-2"><input type="number" class="sc-moq w-full p-1 border rounded persist" placeholder="5000" oninput="compareSuppliers()"></td><td class="p-2"><button class="text-red-500 text-xs" onclick="this.closest('tr').remove(); compareSuppliers();">移除</button></td></tr>`);populateSupplierCurrency(document.querySelector('#sc_table_body tr:last-child .sc-currency'))}
+        
+        function updateWeightLabels(changedInputId){
+            const priceEl = document.getElementById("sc_weight_price");
+            const leadtimeEl = document.getElementById("sc_weight_leadtime");
+            const moqEl = document.getElementById("sc_weight_moq");
+            
+            let p = parseInt(priceEl.value) || 0;
+            let l = parseInt(leadtimeEl.value) || 0;
+            let m = parseInt(moqEl.value) || 0;
+
+            const total = p + l + m;
+            const target = 100;
+
+            if (changedInputId && total !== target) {
+                const otherWeights = [
+                    { id: 'sc_weight_price', val: p, el: priceEl },
+                    { id: 'sc_weight_leadtime', val: l, el: leadtimeEl },
+                    { id: 'sc_weight_moq', val: m, el: moqEl }
+                ].filter(w => w.id !== changedInputId);
+
+                const currentChangedVal = (changedInputId === 'sc_weight_price') ? p : (changedInputId === 'sc_weight_leadtime') ? l : m;
+                const remainingTarget = target - currentChangedVal;
+                
+                let otherSum = otherWeights.reduce((sum, w) => sum + w.val, 0);
+
+                if (remainingTarget < 0) { 
+                    p = (changedInputId === 'sc_weight_price') ? currentChangedVal : 0;
+                    l = (changedInputId === 'sc_weight_leadtime') ? currentChangedVal : 0;
+                    m = (changedInputId === 'sc_weight_moq') ? currentChangedVal : 0;
+                } else if (otherSum > 0) {
+                    const ratio = remainingTarget / otherSum;
+                    otherWeights.forEach(w => {
+                        const newVal = Math.round(w.val * ratio);
+                        setVal(w.id, newVal);
+                        if (w.id === 'sc_weight_price') p = newVal;
+                        if (w.id === 'sc_weight_leadtime') l = newVal;
+                        if (w.id === 'sc_weight_moq') m = newVal;
+                    });
+                } else if (remainingTarget > 0 && otherWeights.length > 0) { 
+                    const share = Math.floor(remainingTarget / otherWeights.length);
+                    otherWeights.forEach((w, index) => {
+                        let newVal = share + (index === 0 ? remainingTarget % otherWeights.length : 0);
+                        setVal(w.id, newVal);
+                        if (w.id === 'sc_weight_price') p = newVal;
+                        if (w.id === 'sc_weight_leadtime') l = newVal;
+                        if (w.id === 'sc_weight_moq') m = newVal;
+                    });
+                }
+            }
+            
+            const newTotal = p + l + m;
+            setHtml("sc_weight_price_label", p);
+            setHtml("sc_weight_leadtime_label", l);
+            setHtml("sc_weight_moq_label", m);
+            const totalEl=document.getElementById("sc_weight_total");
+            totalEl.textContent=`總權重: ${newTotal}`;
+            totalEl.classList.toggle("text-red-500", newTotal !== 100);
+            
+            compareSuppliers();
+            saveState();
+        }
+
+        let lastSupplierComparisonData=null;
+        function generateReportWithGemini(){const btnId = 'sc_ai_button'; if(!lastSupplierComparisonData)return showNotification("請先執行一次比較。","error");const{suppliers,bestSupplier,priceWeight,leadTimeWeight,moqWeight,baseCurrency}=lastSupplierComparisonData;let s=suppliers.map(s=>`- ${s.name}: 總分${s.totalScore.toFixed(1)} (價格:${s.convertedPrice.toFixed(2)}${baseCurrency},交期:${s.leadTime}天,MOQ:${s.moq})`).join("\n");const prompt=`身為採購分析專家，請根據以下數據為內部審核撰寫「採購決策建議報告」核心摘要。**目標:**尋找最具綜合效益的供應商。**評估權重:**價格${priceWeight}%,交期${leadTimeWeight}%,MOQ ${moqWeight}%。**數據:** ${s} **要求:**撰寫約100-150字的專業報告摘要，包含：1.明確推薦供應商。2.結合數據與權重闡述推薦理由。3.簡要提及其他候選商。通篇使用正式客觀的商業書面語氣。`;callGemini(prompt,"sc_ai_report")}
+        
+        function compareSuppliers(){
+            const rows=Array.from(document.querySelectorAll("#sc_table_body tr")).filter(r=>r.querySelector(".sc-name")?.value);
+            if(rows.length===0){ hide("sc_results_container"); return; }
+
+            const bc=getStr("sc_base_currency");
+            const rates={};
+            document.querySelectorAll("#sc_rates_container input").forEach(i=>{rates[i.dataset.currency]=parseFloat(i.value)||1});
+            rates[bc]=1; 
+
+            const[pw,lw,mw]=[getNum("sc_weight_price"),getNum("sc_weight_leadtime"),getNum("sc_weight_moq")];
+            const totalWeight = pw + lw + mw;
+            if(totalWeight<=0) { 
+                setHtml("sc_results", '<p class="text-red-500">請設定有效的權重總和 (>0)</p>');
+                show("sc_results_container");
+                return;
+            }
+
+            const suppliers=rows.map(r=>{
+                const c=r.querySelector(".sc-currency").value,p=parseFloat(r.querySelector(".sc-price").value);
+                const convertedPrice=rates[c]&&isFinite(p)?p*(rates[bc]/rates[c]):Infinity; 
+                return{
+                    name:r.querySelector(".sc-name").value,
+                    price:p,
+                    currency:c,
+                    convertedPrice:convertedPrice,
+                    leadTime:parseInt(r.querySelector(".sc-leadtime").value)||Infinity,
+                    moq:parseInt(r.querySelector(".sc-moq").value)||Infinity
+                }
+            });
+
+            const validScores=s=>isFinite(s)&&s!==Infinity;
+            const[vP,vL,vM]=[suppliers.map(s=>s.convertedPrice).filter(validScores),suppliers.map(s=>s.leadTime).filter(validScores),suppliers.map(s=>s.moq).filter(validScores)];
+            
+            const minP=vP.length > 0 ? Math.min(...vP) : 0;
+            const maxP=vP.length > 0 ? Math.max(...vP) : 0;
+            const minL=vL.length > 0 ? Math.min(...vL) : 0;
+            const maxL=vL.length > 0 ? Math.max(...vL) : 0;
+            const minM=vM.length > 0 ? Math.min(...vM) : 0;
+            const maxM=vM.length > 0 ? Math.max(...vM) : 0;
+
+            let bestS={name:"N/A",score:-1};
+            suppliers.forEach(s=>{
+                const score=(val,min,max)=>max>min?5*(1-(val-min)/(max-min)):5;
+                
+                s.scores={
+                    price: validScores(s.convertedPrice)?score(s.convertedPrice,minP,maxP):0,
+                    leadTime: validScores(s.leadTime)?score(s.leadTime,minL,maxL):0,
+                    moq: validScores(s.moq)?score(s.moq,minM,maxM):0
+                };
+                
+                s.totalScore=(s.scores.price*pw+s.scores.leadTime*lw+s.scores.moq*mw)/totalWeight;
+                if(s.totalScore>bestS.score)bestS={name:s.name,score:s.totalScore}
+            });
+
+            lastSupplierComparisonData={suppliers,bestSupplier:bestS,priceWeight:pw,leadTimeWeight:lw,moqWeight:mw,baseCurrency:bc};
+
+            let h=`<div class="space-y-3"><div class="p-3 bg-green-100 border-l-4 border-green-500 rounded-r-lg"><h4 class="font-bold text-green-800">綜合建議</h4><p class="text-green-700">基於權重(價格:${pw},交期:${lw},MOQ:${mw})，<strong>${bestS.name}</strong> 是最佳選擇。</p></div>`;
+            
+            suppliers.sort((a,b)=>b.totalScore-a.totalScore).forEach(s=>{
+                const star=s=>"★".repeat(Math.round(s))+"☆".repeat(5-Math.round(s));
+                const scorePercentage = (s.totalScore/5) * 100;
+                const barClass = scorePercentage > 80 ? 'green' : scorePercentage > 50 ? 'yellow' : 'red';
+
+                h+=`<div><div class="flex justify-between items-center"><h4 class="font-bold">${s.name}</h4><span class="text-xs bg-gray-200 px-2 py-0.5 rounded-full">總分:${s.totalScore.toFixed(1)}/5.0</span></div>
+                <div class="score-bar-container"><div class="score-bar ${barClass}" style="width:${scorePercentage}%;"></div></div>
+                <div class="mt-2 text-sm space-y-1">
+                    <p><strong>價格:</strong> <span class="star-rating">${star(s.scores.price)}</span> <span class="text-gray-500 text-xs">(${s.price.toFixed(2)}${s.currency}→${isFinite(s.convertedPrice)?s.convertedPrice.toFixed(2):"N/A"}${bc})</span></p>
+                    <p><strong>交期:</strong> <span class="star-rating">${star(s.scores.leadTime)}</span> <span class="text-gray-500 text-xs">(${isFinite(s.leadTime)?s.leadTime:"N/A"}天)</span></p>
+                    <p><strong>MOQ:</strong> <span class="star-rating">${star(s.scores.moq)}</span> <span class="text-gray-500 text-xs">(${isFinite(s.moq)?s.moq:"N/A"})</span></p>
+                </div></div>`
+            });
+            
+            h+='</div><div class="mt-4 text-center"><button id="sc_ai_button" class="btn btn-primary bg-purple-600 hover:bg-purple-700" onclick="generateReportWithGemini()">✨ AI 產生採購決策報告</button></div>';
+            setHtml("sc_results",h);
+            show("sc_results_container");
+            hide("sc_ai_report");
+        }
+        
+        function displayIncoterm(term){
+            const d=incotermsData[term];
+            // --- 1. 傳統責任列表 ---
+            const s=d.seller.map(i=>`<li class="flex items-start"><span class="text-blue-500 mr-2 font-bold">✓</span><span>${i}</span></li>`).join('');
+            const b=d.buyer.map(i=>`<li class="flex items-start"><span class="text-green-500 mr-2 font-bold">✓</span><span>${i}</span></li>`).join('');
+
+            // --- 2. 圖形化責任流程圖 ---
+            const flowPoints = {
+                'SELLER_FACTORY': { name: '賣方工廠', pos: 0 },
+                'MAIN_CARRIAGE_START': { name: '主運送人收貨', pos: 20 },
+                'VESSEL_SIDE': { name: '船邊 (FAS)', pos: 35 },
+                'VESSEL_ON_BOARD': { name: '船上 (FOB/C&I/F)', pos: 50 },
+                'DESTINATION_PORT': { name: '目的港/地 (CFR/FOB)', pos: 65 },
+                'DESTINATION_ARRIVAL': { name: '目的地 (DAP/DDP)', pos: 80 },
+                'DESTINATION_UNLOAD': { name: '目的地卸貨 (DPU)', pos: 100 },
+            };
+
+            const pointMap = {
+                'SELLER_FACTORY': 0,
+                'MAIN_CARRIAGE_START': 1,
+                'VESSEL_SIDE': 2,
+                'VESSEL_ON_BOARD': 3,
+                'DESTINATION_PORT': 4,
+                'DESTINATION_ARRIVAL': 5,
+                'DESTINATION_UNLOAD': 6,
+            };
+
+            const positionMap = [0, 20, 35, 50, 65, 80, 100]; // % positions
+
+            const riskPointKey = d.risk_transfer;
+            const costPointKey = d.cost_transfer;
+            
+            const riskPos = flowPoints[riskPointKey].pos;
+            const costPos = flowPoints[costPointKey].pos;
+
+            const flowHtml = `
+                <div class="text-center font-semibold text-gray-700 text-xs mb-4">
+                    <span class="text-blue-600">◀ 賣方責任 ─────</span>
+                    <span class="text-green-600"> 買方責任 ▶</span>
+                </div>
+                <div class="relative w-full h-24 mt-8 mb-12 mx-auto" style="min-width: 300px;">
+                    <!-- Base Line -->
+                    <div class="flow-line w-full bg-gray-300"></div>
+
+                    <!-- Process Points (Dots) - Show only relevant points to prevent clutter -->
+                    ${Object.keys(flowPoints).map(key => {
+                        const p = flowPoints[key];
+                        // Only show the points that are the start/end or transfer points
+                        if (p.pos === riskPos || p.pos === costPos || p.pos === 0 || p.pos === 100 || key === 'VESSEL_ON_BOARD') {
+                            return `
+                                <div style="position: absolute; left: ${p.pos}%; transform: translateX(-50%); top: 50%; z-index: 20;">
+                                    <div class="h-4 w-4 bg-gray-500 rounded-full border-2 border-white relative"></div>
+                                    <div class="text-center mt-3 text-gray-600 text-xs w-20 transform -translate-x-1/2">${p.name}</div>
+                                </div>
+                            `;
+                        }
+                        return '';
+                    }).join('')}
+                    
+                    <!-- Risk Transfer Mark -->
+                    <div style="position: absolute; left: ${riskPos}%; top: 50%; transform: translate(-50%, -50%); z-index: 30;">
+                        <div class="risk-point !top-0 !mt-0 !-translate-y-1/2 !translate-x-0 !w-4 !h-4"></div>
+                        <div class="label-box label-risk !mt-0" style="left: 0%; transform: translate(-50%, -100%) translateY(-10px);">風險轉移 (${term})</div>
+                    </div>
+
+                    <!-- Cost Transfer Mark -->
+                    <div style="position: absolute; left: ${costPos}%; top: 50%; transform: translate(-50%, -50%); z-index: 30;">
+                        <div class="cost-point !top-0 !mt-0 !-translate-y-1/2 !translate-x-0 !w-4 !h-4"></div>
+                        <div class="label-box label-cost !mt-0" style="left: 0%; transform: translate(-50%, 100%) translateY(10px);">費用轉移 (${term})</div>
+                    </div>
+                    
+                    <!-- Color Bars for Seller/Buyer Responsibility -->
+                    <div class="flow-line" style="width: ${costPos}%; background: #2563eb; top: 40%; z-index: 1;"></div>
+                    <div class="flow-line" style="width: ${100 - costPos}%; background: #10b981; left: ${costPos}%; top: 40%; z-index: 1;"></div>
+
+                </div>
+            `;
+
+
+            setHtml('incoterm_details',`
+                <h3 class="font-bold text-lg text-gray-800 mb-4">${d.title} (${term})</h3>
+                
+                <div class="mb-6">${flowHtml}</div>
+                
+                <p class="text-gray-600 mb-3 pb-3 border-b text-sm">${d.details}</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                        <h4 class="font-bold text-blue-800 mb-2">賣方責任 (Seller)</h4>
+                        <ul class="space-y-1 text-blue-900 text-sm">${s}</ul>
+                    </div>
+                    <div class="bg-green-50 p-3 rounded-lg border border-green-200">
+                        <h4 class="font-bold text-green-800 mb-2">買方責任 (Buyer)</h4>
+                        <ul class="space-y-1 text-green-900 text-sm">${b}</ul>
+                    </div>
+                </div>
+            `);
+        }
+
+        function gcd(a,b){return b?gcd(b,a%b):a}
+        function decimalToFraction(d){if(isNaN(d))return"";const t=1/128;let w=Math.floor(d),f=d-w;if(f<t)return w.toString();if(1-f<t)return(w+1).toString();const denominators=[2,4,8,16,32,64];let b={n:0,d:1,e:Infinity};for(let denominator of denominators){let n=Math.round(f*denominator);if(n===0)continue;let e=Math.abs(f-n/denominator);if(e<b.e){b.n=n;b.d=denominator;b.e=e}}if(b.e<t){let c=gcd(b.n,b.d),sN=b.n/c,sD=b.d/c;if(sN===sD)return(w+1).toString();return(w>0?`${w}-`:"")+`${sN}/${sD}`}return d.toFixed(4)}
+        function parseInchInput(v){v=v.trim().replace('"','').replace('-',' ');const p=v.split(/[\s]+/);let t=0;if(p.length>0){if(p[0].includes('/')){const fp=p[0].split('/');if(fp.length===2&&!isNaN(fp[0])&&!isNaN(fp[1])&&+fp[1]!==0)t+=(parseFloat(fp[0])/parseFloat(fp[1]))||0}else t+=parseFloat(p[0])||0}if(p.length>1&&p[1].includes('/')){const fp=p[1].split('/');if(fp.length===2&&!isNaN(fp[0])&&!isNaN(fp[1])&&+fp[1]!==0)t+=(parseFloat(fp[0])/parseFloat(fp[1]))||0}return t}
+        let isConverting=false;
+        function convertScrews(s){if(isConverting)return;isConverting=true;try{const[mmI,inI,numI]=[document.getElementById('sc_input_mm'),document.getElementById('sc_input_inch'),document.getElementById('sc_input_num')];let mm=NaN;if(s==='mm')mm=parseFloat(mmI.value);else if(s==='inch'){const d=parseInchInput(inI.value);if(!isNaN(d)&&d>0)mm=d*25.4}else if(s==='num'){const f=screwStandards.find(st=>st.num.toUpperCase()===numI.value.toUpperCase());if(f)mm=f.mm}if(isNaN(mm)||mm<=0){clearScrewInputs(s);setHtml('sc_results_table','<p class="text-gray-500 text-sm">輸入數值後顯示最接近尺寸。</p>');return}screwStandards.forEach(st=>st.diff=Math.abs(st.mm-mm));const cl=screwStandards.sort((a,b)=>a.diff-b.diff);if(s!=='mm')mmI.value=mm.toFixed(4);if(s!=='inch')inI.value=decimalToFraction(mm/25.4);if(s!=='num')numI.value=cl[0].num;let t=`<table class="w-full text-sm"><thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th class="p-2">規格</th><th class="p-2 text-right">公制(mm)</th><th class="p-2 text-right">英制(inch)</th><th class="p-2 text-right">牙距(mm)</th><th class="p-2 text-right">牙數(TPI)</th></tr></thead><tbody>`;cl.slice(0,5).forEach((st,i)=>{const bg=i===0?'bg-blue-50':'';t+=`<tr class="${bg} border-b"><td class="p-2 font-bold ${i===0?'text-blue-700':''}">${st.num}</td><td class="p-2 text-right">${st.mm.toFixed(3)}</td><td class="p-2 text-right">${decimalToFraction(st.inch)}</td><td class="p-2 text-right">${st.pitch_mm?st.pitch_mm.toFixed(3):'-'}</td><td class="p-2 text-right">${st.tpi||'-'}</td></tr>`});setHtml('sc_results_table',t+'</tbody></table>')}finally{isConverting=false}}
+        function clearScrewInputs(s=null){if(s!=='mm')setVal('sc_input_mm','');if(s!=='inch')setVal('sc_input_inch','');if(s!=='num')setVal('sc_input_num','');if(!s)setHtml('sc_results_table','<p class="text-gray-500 text-sm">輸入數值後顯示最接近尺寸。</p>')}
+        function exportActiveTabToPDF(){const el=document.querySelector('.tab-content.active .card');if(!el)return showNotification('目前頁籤沒有可匯出的內容。','error');const title=el.dataset.exportTitle||'匯出資料';showNotification('正在生成 PDF...','info',5000);el.classList.add('is-exporting');html2canvas(el,{scale:2,useCORS:true,backgroundColor:null}).then(canvas=>{el.classList.remove('is-exporting');const imgData=canvas.toDataURL('image/jpeg',0.9);const pdf=new jsPDF('p','mm','a4');const {width,height}=pdf.internal.pageSize;const margin=10;const pdfWidth=width-margin*2;const ratio=pdfWidth/canvas.width;const imgHeight=canvas.height*ratio;pdf.addImage(imgData,'JPEG',margin,margin,pdfWidth,imgHeight);pdf.save(`${title}.pdf`);showNotification('PDF 匯出成功！','success')}).catch(e=>{el.classList.remove('is-exporting');console.error("PDF generation failed:",e);showNotification(`PDF 匯出失敗: ${e.message}`,'error')})}
+        function exportActiveTabToExcel(){const el=document.querySelector('.tab-content.active .card');if(!el)return showNotification('此頁籤不支援Excel匯出。','error');const title=el.dataset.exportTitle||'匯出資料';let data=[],ws;const table=el.querySelector('table');if(table){ws=XLSX.utils.table_to_sheet(table);if(el.closest('.tab-content').id==='bomCost'){const total=document.getElementById('bom_totalCost').textContent;XLSX.utils.sheet_add_aoa(ws,[[],["總成本:",total]],{origin:-1})}const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,title);return XLSX.writeFile(wb,`${title}.xlsx`)}if(el.closest('.tab-content').id==='basicCost'){data.push(["項目","數值"],["產品型號",getStr('bc_model')],["單重(g)",getNum('bc_weight')],["電鍍單價(元/kg)",getNum('bc_platingPrice')],["黑身費(元)",getNum('bc_baseCost')],["加工費(元)",getNum('bc_processingFee')],[],["單顆電鍍費",document.getElementById('bc_platingFee_result').textContent],["單顆總成本",document.getElementById('bc_totalCost_result').textContent])}else{return showNotification('此頁籤目前不支援表單匯出。','error')}ws=XLSX.utils.aoa_to_sheet(data);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,title);XLSX.writeFile(wb,`${title}.xlsx`)}
+        
+        function createExchangeRateComponent(prefix) {
+            let toLabel = '報價幣別';
+            if (prefix === 'rp') { toLabel = '賣價幣別'; }
+            return `
+                <div id="${prefix}_exchange_rate_component">
+                    <div class="grid grid-cols-5 gap-2 mb-2 items-center">
+                        <div class="input-group col-span-2"><label for="${prefix}_from_currency">成本幣別</label><select id="${prefix}_from_currency" class="persist"></select></div>
+                        <div class="text-center pt-5"><button class="p-1 rounded-full hover:bg-gray-200" onclick="swapCurrencies('${prefix}')" title="互換幣別"><svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg></button></div>
+                        <div class="input-group col-span-2"><label for="${prefix}_to_currency">${toLabel}</label><select id="${prefix}_to_currency" class="persist"></select></div>
+                    </div>
+                    <div class="flex items-center gap-2 mb-2">
+                        <button id="${prefix}_fetch_rates_btn" class="btn btn-primary btn-sm flex-grow" onclick="fetchExchangeRate('${prefix}')"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h5M20 20v-5h-5M4 4l5 5M20 20l-5-5"></path></svg>讀取即時匯率</button>
+                        <p id="${prefix}_rate_status" class="text-xs text-gray-500 flex-shrink"></p>
+                    </div>
+                    <div class="bg-gray-100 p-2 rounded-md text-sm mb-2 text-center">
+                        <span>參考匯率 (1 <span id="${prefix}_to_currency_display">USD</span> = ? <span id="${prefix}_from_currency_display">TWD</span>)：</span>
+                        <span id="${prefix}_ref_rate" class="font-semibold">N/A</span>
+                        <span id="${prefix}_rate_time" class="text-xs text-gray-500 ml-2"></span>
+                    </div>
+                    <div class="input-group mb-3"><label for="${prefix}_exchangeRate">手動輸入匯率 (計算用)</label><input type="number" id="${prefix}_exchangeRate" placeholder="請手動輸入或點擊上方讀取" oninput="checkRateDifference('${prefix}');" class="persist"><div id="${prefix}_rate_warning" class="text-red-600 text-xs h-4 mt-1"></div></div>
+                </div>
+            `;
+        }
+        function populateSupplierCurrency(sel){const currencyOptions=Object.entries(currencies).map(([c,n])=>`<option value="${c}">${n} (${c})</option>`).join('');if(sel)sel.innerHTML=currencyOptions}
+        function updateSupplierRateInputs(){const bc=getStr("sc_base_currency");document.getElementById('sc_base_currency_label_input').textContent=bc;const rc=document.getElementById('sc_rates_container');let h='';for(const c in currencies){if(c!==bc){h+=`<div class="input-group"><label class="text-xs">${c}</label><input type="number" class="w-full text-sm p-1 border rounded persist" id="sc_rate_${c.toLowerCase()}" data-currency="${c}" placeholder="1 ${c} = ? ${bc}" oninput="compareSuppliers()"></div>`}}rc.innerHTML=h;document.getElementById('sc_realtime_rates_display').innerHTML='<p class="text-gray-500">點擊上方按鈕載入即時匯率作為參考。</p>'}
+        
+        function updateCurrencyDisplays(prefix) {
+            const from = getStr(`${prefix}_from_currency`);
+            const to = getStr(`${prefix}_to_currency`);
+            
+            const fromEl = document.getElementById(`${prefix}_from_currency_display`);
+            const toEl = document.getElementById(`${prefix}_to_currency_display`);
+            
+            if (fromEl) fromEl.textContent = from;
+            if (toEl) toEl.textContent = to;
+            
+            if (from && to && document.getElementById('ctq_cost')) {
+                 if (prefix === 'ctq') calculateCostToQuote();
+                 if (prefix === 'cqr') calculateQuoteReverse();
+                 if (prefix === 'rp') calculateReverseProfit();
+            }
+            if (prefix === 'ctq' || prefix === 'cqr' || prefix === 'rp') saveState();
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Re-create rate components using the function
+            document.getElementById('ctq_exchange_rate_component').outerHTML = createExchangeRateComponent('ctq');
+            document.getElementById('cqr_exchange_rate_component').outerHTML = createExchangeRateComponent('cqr');
+            document.getElementById('rp_exchange_rate_component').outerHTML = createExchangeRateComponent('rp');
+
+            let incotermButtonsHTML='';Object.keys(incotermsData).forEach(term=>{incotermButtonsHTML+=`<button class="btn btn-sm btn-secondary" onclick="displayIncoterm('${term}')">${term}</button>`});setHtml('incoterm_buttons',incotermButtonsHTML);
+            const currencyOptions=Object.entries(currencies).map(([c,n])=>`<option value="${c}">${n} (${c})</option>`).join('');
+            ['ctq_from_currency','ctq_to_currency','cqr_from_currency','cqr_to_currency','rp_from_currency','rp_to_currency','sc_base_currency'].forEach(id=>{const el = document.getElementById(id); if(el) el.innerHTML=currencyOptions});
+            
+            if(!localStorage.getItem('costToolState')){
+                setVal('ctq_from_currency','TWD'); setVal('ctq_to_currency','USD');
+                setVal('cqr_from_currency','TWD'); setVal('cqr_to_currency','USD');
+                setVal('rp_from_currency','TWD'); setVal('rp_to_currency','USD');
+                setVal('sc_base_currency','TWD');
+            }
+            updateSupplierRateInputs();
+            loadState();
+            
+            // Event listeners for currency selects after component recreation
+            document.querySelectorAll('select[id$="_currency"]').forEach(select => {
+                select.addEventListener('change', (e) => {
+                    const prefix = e.target.id.split('_')[0];
+                    updateCurrencyDisplays(prefix);
+                });
+            });
+
+            // Event listeners for manual rate inputs after component recreation
+            document.querySelectorAll('input[id$="_exchangeRate"]').forEach(input => {
+                input.addEventListener('input', (e) => {
+                    const prefix = e.target.id.split('_')[0];
+                    if (prefix === 'ctq') calculateCostToQuote();
+                    if (prefix === 'cqr') calculateQuoteReverse();
+                    if (prefix === 'rp') calculateReverseProfit();
+                });
+            });
+
+            document.querySelector('body').addEventListener('input', e => { if (e.target.classList.contains('persist')) saveState(); });
+            const scBaseCurrency = document.getElementById('sc_base_currency');
+            if(scBaseCurrency) scBaseCurrency.addEventListener('change',()=>{updateSupplierRateInputs(); compareSuppliers(); saveState();});
+
+            updateWeightLabels();
+            generateSensitivityTable();
+            if(document.querySelectorAll("#bom_table_body .bom-item").length === 0) addBomItem();
+            if(document.querySelectorAll("#sc_table_body tr").length === 0) addSupplier();
+
+            updateCurrencyDisplays('ctq');
+            updateCurrencyDisplays('cqr');
+            updateCurrencyDisplays('rp');
+
+            // Initial calculations run to populate results on load
+            calculateBasicCost();
+            calculateCostGap();
+            calculatePriceChange();
+            calculateBargainingPressure();
+            calculateAchievementRate();
+            calculateCostToQuote();
+            calculateQuoteReverse();
+            calculateReverseProfit();
+            calculateCbmWeight();
+            calculateBomTotal();
+        });
+    </script>
+</body>
+</html>
